@@ -170,6 +170,46 @@ dialog h2 { margin: 0 0 14px; font-size: 17px; }
 .toast.on { opacity: 1; }
 .hit { fill: transparent; cursor: default; }
 .mark-hover { opacity: .85; }
+/* meetings tab */
+.mt-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 16px; align-items: start; }
+.mt-list { display: flex; flex-direction: column; gap: 6px; position: sticky; top: 76px; max-height: calc(100vh - 100px); overflow: auto; padding: 2px; }
+.mt-item { text-align: left; border: 1px solid var(--border); background: var(--surface-1); border-radius: 10px; padding: 9px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.mt-item:hover { background: var(--surface-2); }
+.mt-item.sel { border-color: var(--accent); background: var(--wash); box-shadow: inset 3px 0 0 var(--accent); }
+.mt-date { font-size: 11px; color: var(--text-muted); }
+.mt-title { font-weight: 600; line-height: 1.3; }
+.mt-meta { font-size: 12px; color: var(--text-secondary); }
+.meeting-detail { padding: 20px 24px; margin-bottom: 0; }
+.md-head { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.md-head .grow { flex: 1; min-width: 240px; }
+.md-date { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.md-title { font-size: 20px; margin: 2px 0 8px; font-weight: 650; }
+.md-people { display: flex; flex-wrap: wrap; gap: 6px; }
+.person { font-size: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 1px 9px; }
+.md-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.md-stats { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 16px 0 0; padding: 10px 0; border-top: 1px solid var(--grid); border-bottom: 1px solid var(--grid); font-size: 13px; color: var(--text-secondary); }
+.md-stat b { color: var(--text-primary); }
+.md-stat.overdue-text b { color: var(--critical); }
+.md-sec { margin-top: 20px; }
+.md-sec h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin: 0 0 8px; font-weight: 650; }
+.md-summary { margin: 0; font-size: 14.5px; line-height: 1.7; max-width: 85ch; }
+.md-themes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+.theme { font-size: 12px; border-radius: 6px; background: var(--wash); color: var(--accent); padding: 1px 8px; font-weight: 550; }
+.tp-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tp-list li { display: flex; gap: 12px; align-items: baseline; padding: 9px 12px; background: var(--surface-2); border-radius: 8px; line-height: 1.5; }
+.tp-topic { flex: none; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .03em; color: var(--text-secondary); width: 110px; overflow: hidden; text-overflow: ellipsis; }
+.md-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+.md-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.md-list li { padding-left: 22px; position: relative; line-height: 1.5; }
+.md-list.dec li::before { content: '✓'; position: absolute; left: 3px; color: var(--good-text); font-weight: 700; }
+.md-list.risk li::before { content: '⚑'; position: absolute; left: 3px; color: var(--critical); }
+.md-acts td { padding: 7px 6px; vertical-align: middle; }
+.mlink { color: var(--text-primary); text-decoration: none; }
+.mlink:hover { text-decoration: underline; }
+.mc-points { margin: 8px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.mc-points li { margin: 3px 0; }
+.mc-stats { font-size: 12px; color: var(--text-secondary); margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--grid); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+@media (max-width: 900px) { .mt-layout { grid-template-columns: 1fr; } .mt-list { position: static; max-height: 260px; } .md-cols { grid-template-columns: 1fr; } }
 /* project plan */
 .plan-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .pbar { display: inline-block; width: 64px; height: 6px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--border); vertical-align: middle; overflow: hidden; }
@@ -213,6 +253,14 @@ dialog h2 { margin: 0 0 14px; font-size: 17px; }
 .drop-over { outline: 2px dashed var(--accent) !important; outline-offset: -2px; background: var(--wash) !important; }
 tr.drop-over td { background: var(--wash) !important; }
 .att-count { font-size: 11px; color: var(--text-muted); margin-left: 6px; white-space: nowrap; }
+/* action items extracted from attachments */
+.att-badge { font-size: 11px; color: var(--text-secondary); border-left: 1px solid var(--border); padding-left: 6px; white-space: nowrap; }
+.extract-group { border-top: 1px solid var(--grid); padding: 10px 0 6px; }
+.extract-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 600; }
+.extract-head a { color: var(--text-primary); text-decoration: none; }
+.extract-head a:hover { text-decoration: underline; }
+.extract-list { margin: 0; padding-left: 0; list-style: none; font-size: 13px; }
+.extract-list li { margin: 4px 0; }
 /* lock screen */
 body.locked > :not(#lock):not(.toast) { visibility: hidden; }
 .lock { position: fixed; inset: 0; z-index: 300; background: var(--page); display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -326,10 +374,12 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
       </div>
     </div>
 
+    <div class="card" id="extractCard" style="margin-bottom:16px" hidden></div>
+
     <div class="card" id="planCard" style="margin-bottom:16px"></div>
 
     <div class="card">
-      <h2>Recent meetings <span class="hint">auto-summarized from uploaded minutes</span></h2>
+      <h2>Recent meetings <span class="hint">topics and key talking points from the minutes</span></h2>
       <div id="recentMeetings"></div>
     </div>
   </section>
@@ -773,19 +823,13 @@ function resolveOwner(name, extra) {
   return known.length === 1 ? known[0] : name;
 }
 function extractActions(minutes, attendees) {
-  const att = String(attendees || '').split(/[,;]/).map(s => s.trim()).filter(Boolean);
-  const out = [];
-  String(minutes || '').split(/\r?\n/).forEach(line => {
-    const m = ACTION_RE.exec(line) || CHECKBOX_RE.exec(line);
-    if (m && m[1].trim().length > 2) {
-      const a = parseActionLine(m[1].trim());
-      a.owner = resolveOwner(a.owner, att);
-      if (a.text) out.push(a);
-    }
-  });
-  return out;
+  // "Action:" lines, items under an "Action items" / "Next steps" heading, and Action | Owner | Due tables
+  const items = findActionItems(minutes);
+  const att = String(attendees || '').split(/[,;]/).map(s => s.trim()).filter(Boolean).concat(items.map(i => i.owner).filter(o => o && /\s/.test(o)));
+  return items.map(a => ({ ...a, owner: resolveOwner(a.owner, att) }));
 }
 function summarizeMinutes(minutes) {
+  if (typeof meetingDigest === 'function') { const d = meetingDigest({ title: '', minutes }); return { decisions: d.decisions, risks: d.risks, points: d.points.map(x => x.text) }; }
   const lines = String(minutes || '').split(/\r?\n/).map(l => l.replace(/^\s*[-*•–>\d.)]+\s*/, '').trim()).filter(Boolean);
   const decisions = [], risks = [], points = [];
   for (const l of lines) {
@@ -822,20 +866,29 @@ async function readDocx(file) {
       else xml = await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
       const doc = new DOMParser().parseFromString(xml, 'application/xml');
       const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
-      const paras = [...doc.getElementsByTagNameNS(W, 'p')];
-      return paras.map(pEl => {
+      const pText = pEl => {
         let t = '';
         const walk = el => { for (const c of el.childNodes) {
           if (c.nodeType !== 1) continue;
           if (c.localName === 't') t += c.textContent;
           else if (c.localName === 'tab') t += '\t';
           else if (c.localName === 'br') t += '\n';
-          else if (c.localName !== 'p') walk(c);
+          else if (c.localName !== 'p' && c.localName !== 'tbl') walk(c);
         } };
-        walk(pEl);
-        const isList = pEl.getElementsByTagNameNS(W, 'numPr').length > 0;
-        return (isList && t.trim() ? '- ' : '') + t;
-      }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+        walk(pEl); return t;
+      };
+      const out = [];
+      const block = el => { for (const c of el.children) {
+        if (c.localName === 'p') { const t = pText(c), isList = c.getElementsByTagNameNS(W, 'numPr').length > 0; out.push((isList && t.trim() ? '- ' : '') + t); }
+        else if (c.localName === 'tbl') {   // tables become "cell | cell | cell" lines
+          out.push('');
+          for (const tr of c.children) if (tr.localName === 'tr') out.push([...tr.children].filter(x => x.localName === 'tc').map(tc => [...tc.children].filter(x => x.localName === 'p').map(pText).join(' ').trim()).join(' | '));
+          out.push('');
+        }
+        else if (['body', 'sdt', 'sdtContent', 'customXml', 'smartTag'].includes(c.localName)) block(c);
+      } };
+      block(doc.documentElement);
+      return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
     }
     p += 46 + nlen + elen + clen;
   }
@@ -1053,7 +1106,7 @@ mForm.addEventListener('submit', e => {
   else { m = { id: uid(), createdAt: Date.now(), ...data }; state.meetings.push(m); }
   const existing = state.actions.filter(a => a.meetingId === m.id);
   const fresh = extractActions(m.minutes, m.attendees).filter(f => !existing.some(x => x.text.toLowerCase() === f.text.toLowerCase()));
-  fresh.forEach(f => state.actions.push({ id: uid(), text: f.text, owner: f.owner || 'Unassigned', due: f.due, status: 'Open', priority: 'Medium', meetingId: m.id, notes: '', createdAt: Date.now() }));
+  fresh.forEach(f => { const a = { id: uid(), text: f.text, owner: f.owner || 'Unassigned', due: f.due, status: f.done ? 'Done' : 'Open', priority: 'Medium', meetingId: m.id, notes: '', createdAt: Date.now() }; markCompleted(a); state.actions.push(a); });
   toast((id ? 'Meeting updated' : 'Meeting saved') + (fresh.length ? ' · ' + plural(fresh.length, 'action item') + ' added' : ''));
   save();
   if (staged.meeting.length) { const files = staged.meeting; staged.meeting = []; addAttachments(files, 'meeting', m.id); }
@@ -1217,7 +1270,7 @@ function render() {
   document.title = state.project;
   document.getElementById('todayLabel').textContent = 'Today: ' + today().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) + ' · ' + plural(state.meetings.length, 'meeting') + ' · ' + plural(state.actions.length, 'action item');
   document.getElementById('ownerList').innerHTML = owners().map(o => `<option value="${esc(o)}">`).join('');
-  renderDashboard(); renderPlanCard(); renderMeetings(); renderActionFilters(); renderActions(); renderPlan();
+  renderDashboard(); renderExtractCard(); renderPlanCard(); renderMeetings(); renderActionFilters(); renderActions(); renderPlan();
 }
 
 function stats() {
@@ -1260,6 +1313,8 @@ function renderDashboard() {
     const allRisk = state.meetings.reduce((n, m) => n + summarizeMinutes(m.minutes).risks.length, 0);
     if (allDec || allRisk) parts.push(` Minutes record ${plural(allDec, 'decision')} and ${plural(allRisk, 'risk/issue', 'risks/issues')}.`);
     if (state.plan && state.plan.tasks.length) { const ps = planStats(planRows()); parts.push(` The project plan is <b>${ps.overall}% complete</b> (${ps.complete.length} of ${plural(ps.leaves.length, 'task')} done)${ps.overdue.length ? `, <span class="overdue-text">${plural(ps.overdue.length, 'task')} overdue</span>` : ''}${ps.soon.length ? `, ${ps.soon.length} due within ${planWin()} days` : ''}.`); }
+    { const fromAtt = state.attachments.filter(a => loggedFrom(a).length); const nAtt = fromAtt.reduce((n, a) => n + loggedFrom(a).length, 0);
+      if (nAtt) parts.push(` ${plural(nAtt, 'action item was', 'action items were')} extracted from ${plural(fromAtt.length, 'attachment')}.`); }
     if (state.attachments.length) parts.push(` ${plural(state.attachments.length, 'file is', 'files are')} attached (${fmtSize(state.attachments.reduce((n, a) => n + a.size, 0))}, encrypted).`);
     el.innerHTML = parts.join('');
   }
@@ -1290,7 +1345,7 @@ function renderDashboard() {
 
   // recent meetings
   const rm = [...state.meetings].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 4);
-  document.getElementById('recentMeetings').innerHTML = rm.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">${rm.map(m => meetingCard(m, true)).join('')}</div>` + (state.meetings.length > 4 ? `<p class="small"><a href="#" data-goto-view="meetings">View all ${state.meetings.length} meetings →</a></p>` : '') : '<div class="empty">No meetings yet — drop a minutes file above or click “+ Meeting minutes”.</div>';
+  document.getElementById('recentMeetings').innerHTML = rm.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">${rm.map(m => meetingCard(m)).join('')}</div>` + (state.meetings.length > 4 ? `<p class="small"><a href="#" data-goto-view="meetings">View all ${state.meetings.length} meetings →</a></p>` : '') : '<div class="empty">No meetings yet — drop a minutes file above or click “+ Meeting minutes”.</div>';
 }
 
 function ownerRows() {
@@ -1330,28 +1385,132 @@ function actionMiniTable(list) {
   </tbody></table>`;
 }
 
-function meetingCard(m, compact) {
-  const sum = summarizeMinutes(m.minutes);
-  const acts = state.actions.filter(a => a.meetingId === m.id);
-  const open = acts.filter(a => a.status !== 'Done').length;
-  const list = (label, arr, n) => arr.length ? `<div class="sec-label">${label}</div><ul>${arr.slice(0, n).map(x => `<li>${esc(x)}</li>`).join('')}${arr.length > n ? `<li class="muted">+${arr.length - n} more</li>` : ''}</ul>` : '';
-  const n = compact ? 3 : 50;
-  const atts = attsFor('meeting', m.id);
+/* ---- meeting digest: written summary, key talking points, decisions, risks ---- */
+const STOPWORDS = new Set(`a about above after again against all also am an and any are as at be because been before being below between both but by can could did do does doing done down during each few for from further had has have having he her here hers him his how i if in into is it its itself just let me more most my no nor not now of off on once only or other our ours out over own per same she should so some such than that the their theirs them then there these they this those through to too under until up upon us very via was we were what when where which while who whom why will with would you your yours yes please thanks thank hi hello team regards kind best cheers meeting meetings discussed discussion discuss noted note notes agreed agree update updates item items week weeks today tomorrow yesterday next last new well get got make made need needs going shall may might must one two three within across around etc still currently also good great`.split(/\s+/));
+const SPECIAL_HEAD = /^(attendees|present|apologies|absent|agenda|date|time|location|minutes|action items?|actions?|next steps|to-?dos?|follow[- ]?ups?|decisions?|key decisions|risks?|issues?|risks? (?:&|and) issues|blockers?|concerns?|next meeting|date of next meeting|aob|any other business)\b/i;
+const digestCache = new Map();
+function splitSections(text) {
+  const raw = String(text || '').replace(/\r/g, '').split('\n'), secs = []; let cur = { title: '', lines: [] };
+  const isHead = (l, next) => {
+    const t = l.trim(); if (!t || BULLET_RE.test(l)) return false;
+    if (/^#{1,6}\s+\S/.test(t)) return true;
+    if (/^(from|to|cc|sent|subject|date|attendees|present)\s*:/i.test(t) && !/:$/.test(t)) return false;
+    if (t.length <= 60 && /:$/.test(t)) return true;
+    return t.length <= 50 && !/[.!?,;:)]$/.test(t) && /^[A-Z0-9]/.test(t) && t.split(/\s+/).length <= 7 && !!(next && next.trim());
+  };
+  raw.forEach((l, i) => { if (isHead(l, raw[i + 1])) { if (cur.title || cur.lines.length) secs.push(cur); cur = { title: l.trim().replace(/^#+\s*/, '').replace(/:$/, '').trim(), lines: [] }; } else if (l.trim()) cur.lines.push(l); });
+  if (cur.title || cur.lines.length) secs.push(cur);
+  return secs;
+}
+const cleanLine = l => l.replace(BULLET_RE, '').replace(BULLET_RE, '').trim();
+const isNoise = l => !l || l.length < 18 || ACTION_RE.test(l) || CHECKBOX_RE.test(l) || /^(from|to|cc|bcc|sent|subject|date|attendees|present|apologies|absent|location|time)\s*:/i.test(l) || /^(hi|hello|dear|thanks|thank you|regards|kind regards|best|cheers|many thanks)\b/i.test(l) || /^https?:\/\//.test(l);
+const stemW = w => w.length > 4 ? w.replace(/(ings?|edly|ed|es|s)$/, '') : w;
+const tokensOf = t => (t.toLowerCase().match(/[a-z][a-z'’-]+/g) || []).filter(w => w.length > 2 && !STOPWORDS.has(w));
+function meetingDigest(m) {
+  const text = String(m.minutes || ''), key = (m.title || '') + '\u0000' + text;
+  if (digestCache.has(key)) return digestCache.get(key);
+  const secs = splitSections(text), decisions = [], risks = [], cands = [], titleLc = (m.title || '').trim().toLowerCase();
+  secs.forEach((sec, si) => {
+    const head = sec.title;
+    const kind = /^(decisions?|key decisions)\b/i.test(head) ? 'decision' : /^(risks?|issues?|risks? (?:&|and) issues|blockers?|concerns?)\b/i.test(head) ? 'risk' : SPECIAL_HEAD.test(head) ? 'skip' : 'topic';
+    const topic = kind === 'topic' && head && head.toLowerCase() !== titleLc ? head : '';
+    for (const raw of sec.lines) {
+      const l = cleanLine(raw);
+      if (!l || /^(none|n\/a|nothing)\.?$/i.test(l) || kind === 'skip' || ACTION_RE.test(l) || CHECKBOX_RE.test(l)) continue;
+      if (kind === 'decision') { decisions.push(l.replace(/^decisions?\s*[:\-]\s*/i, '')); continue; }
+      if (kind === 'risk') { risks.push(l.replace(/^(risks?|issues?|blockers?)\s*[:\-]\s*/i, '')); continue; }
+      if (/^decisions?\s*[:\-]/i.test(l) || /\b(decided|decision|agreed|approved|resolved|signed off|go[- ]ahead)\b/i.test(l)) { decisions.push(l.replace(/^decisions?\s*[:\-]\s*/i, '')); continue; }
+      if (/^(risks?|issues?|blockers?|concerns?)\s*[:\-]/i.test(l) || /\b(risks?|issues?|blockers?|blocked|concerns?|escalat\w*|at risk)\b/i.test(l)) { risks.push(l.replace(/^(risks?|issues?|blockers?)\s*[:\-]\s*/i, '')); continue; }
+      l.split(/(?<=[.!?])\s+(?=[A-Z0-9“"])/).forEach(sn => { sn = sn.trim(); if (!isNoise(sn)) cands.push({ text: sn, topic, si, order: cands.length }); });
+    }
+  });
+  // score sentences by how central their words are to the whole meeting
+  const freq = new Map(), forms = new Map();
+  const add = w => { const k = stemW(w); freq.set(k, (freq.get(k) || 0) + 1); if (!forms.has(k) || w.length < forms.get(k).length) forms.set(k, w); };
+  cands.forEach(c => tokensOf(c.text).forEach(add));
+  decisions.concat(risks).forEach(t => tokensOf(t).forEach(add));
+  const titleKeys = new Set(tokensOf(m.title || '').map(stemW));
+  tokensOf(m.title || '').forEach(add);
+  cands.forEach(c => { const ws = [...new Set(tokensOf(c.text).map(stemW))]; c.score = ws.reduce((n, k) => n + (freq.get(k) || 0), 0) / Math.sqrt(ws.length + 1) + (/\d/.test(c.text) ? 0.6 : 0) + (c.order < 3 ? 0.3 : 0); });
+  let points = [];
+  const topicIdx = [...new Set(cands.filter(c => c.topic).map(c => c.si))];
+  if (topicIdx.length >= 2) {   // one point (two for long sections) per topic heading
+    topicIdx.forEach(si => { const cs = cands.filter(c => c.si === si).sort((a, b) => b.score - a.score); points.push(cs[0]); if (cs.length >= 4) points.push(cs[1]); });
+    cands.filter(c => !c.topic).sort((a, b) => b.score - a.score).slice(0, 2).forEach(c => points.push(c));
+  } else points = [...cands].sort((a, b) => b.score - a.score).slice(0, 5);
+  points = points.filter(Boolean).sort((a, b) => a.order - b.order).slice(0, 7);
+  const DATEWORD = /^(january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday|quarter|month|year)$/;
+  const headTopics = secs.filter(x => x.title && !SPECIAL_HEAD.test(x.title) && x.title.toLowerCase() !== titleLc && cands.some(c => c.topic === x.title)).map(x => x.title);
+  const themes = headTopics.length >= 2 ? headTopics.slice(0, 6)
+    : [...freq.entries()].filter(([k, n]) => n >= 2 && k.length > 3 && !titleKeys.has(k) && !DATEWORD.test(forms.get(k))).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => forms.get(k));
+  const out = { decisions, risks, points, themes, sentences: cands.length };
+  digestCache.set(key, out); if (digestCache.size > 300) digestCache.delete(digestCache.keys().next().value);
+  return out;
+}
+const clip = (t, n) => t.length > n ? t.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : t;
+const quote = (t, n) => '“' + esc(clip(String(t).replace(/[.!?;:]+$/, ''), n)) + '”';
+const listJoin = a => a.length <= 1 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+const peopleOf = m => String(m.attendees || '').split(/[,;]/).map(x => x.trim()).filter(Boolean);
+function meetingNarrative(m, d) {
+  const people = peopleOf(m), acts = state.actions.filter(a => a.meetingId === m.id), open = acts.filter(a => a.status !== 'Done'), od = acts.filter(isOverdue), atts = attsFor('meeting', m.id), s = [];
+  s.push(`<b>${esc(m.title)}</b> took place on ${fmtDate(m.date, { weekday: 'long', month: 'long', day: 'numeric' })}` + (people.length ? ` with ${people.length <= 3 ? esc(listJoin(people)) : esc(people.slice(0, 2).join(', ')) + ` and ${people.length - 2} others`}` : '') + '.');
+  if (d.themes.length) s.push(`The discussion centred on ${esc(listJoin(d.themes.slice(0, 4).map(t => /^[A-Z0-9]{2,}\b/.test(t) ? t : t.charAt(0).toLowerCase() + t.slice(1))))}.`);
+  if (d.decisions.length) s.push(`${d.decisions.length === 1 ? 'One decision was' : d.decisions.length + ' decisions were'} recorded, including ${quote(d.decisions[0], 110)}.`);
+  if (d.risks.length) s.push(`${plural(d.risks.length, 'risk or issue was', 'risks or issues were')} raised, such as ${quote(d.risks[0], 90)}.`);
+  if (acts.length) {
+    const own = {}; open.forEach(a => { own[a.owner] = (own[a.owner] || 0) + 1; });
+    const ownE = Object.entries(own).sort((a, b) => b[1] - a[1]), many = ownE.some(([, n]) => n > 1);
+    const ow = ownE.slice(0, 3).map(([o, n]) => many ? `${o} (${n})` : o).concat(ownE.length > 3 ? [plural(ownE.length - 3, 'other')] : []);
+    const next = open.filter(a => a.due).sort((a, b) => a.due.localeCompare(b.due))[0];
+    s.push(`${plural(acts.length, 'action item')} came out of it — ${open.length ? `${open.length} still open${ow.length ? ' (' + esc(listJoin(ow)) + ')' : ''}` : 'all complete'}${od.length ? `, <span class="overdue-text">${od.length} overdue</span>` : ''}.` + (next ? ` Next due: ${quote(next.text, 70)} (${esc(next.owner)}, ${relDue(next.due)}).` : ''));
+  }
+  if (atts.length) s.push(`${plural(atts.length, 'file is', 'files are')} attached.`);
+  if (!d.sentences && !d.decisions.length && !d.risks.length && !acts.length) s.push('No minutes have been added yet — use ✎ Edit to add them, or drop a minutes file or email here.');
+  return s.join(' ');
+}
+const sortActs = list => [...list].sort((a, b) => (a.status === 'Done') - (b.status === 'Done') || (a.due || '9999').localeCompare(b.due || '9999'));
+function meetingCard(m) {   // compact card for the Dashboard
+  const d = meetingDigest(m), acts = state.actions.filter(a => a.meetingId === m.id), open = acts.filter(a => a.status !== 'Done').length, od = acts.filter(isOverdue).length, atts = attsFor('meeting', m.id), people = peopleOf(m);
   return `<div class="meeting-card" data-drop-type="meeting" data-drop-id="${esc(m.id)}">
-    <div class="meeting-head"><div class="grow"><h3>${esc(m.title)}</h3>
-    <div class="meta">${fmtDate(m.date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}${m.attendees ? ' · ' + esc(m.attendees) : ''}</div></div>
-    ${compact ? '' : `<button class="icon-btn" data-add-action="${esc(m.id)}" title="Add action item to this meeting">＋</button><button class="icon-btn" data-edit-meeting="${esc(m.id)}" title="Edit">✎</button><button class="icon-btn" data-del-meeting="${esc(m.id)}" title="Delete">🗑</button>`}
-    </div>
-    ${list('Key points', sum.points, compact ? 2 : 50)}
-    ${list('Decisions', sum.decisions, n)}
-    ${list('Risks & issues', sum.risks, n)}
-    <div class="sec-label">Action items · ${acts.length ? `${open} open of ${acts.length}` : 'none'}</div>
-    ${acts.length ? `<ul>${acts.slice(0, compact ? 4 : 100).map(a => `<li>${a.status === 'Done' ? '<s class="muted">' + esc(a.text) + '</s>' : esc(a.text)} <span class="muted">— ${esc(a.owner)}${a.due ? ', ' : ''}</span>${a.due ? relDue(a.due, true) : ''}${isOverdue(a) ? ' <span class="overdue-text small">(overdue)</span>' : ''}</li>`).join('')}${compact && acts.length > 4 ? `<li class="muted">+${acts.length - 4} more</li>` : ''}</ul>` : ''}
-    ${compact ? (atts.length ? `<div class="sec-label">Attachments · ${atts.length}</div><div class="att-list">${attChips(atts.slice(0, 3), { noDelete: true })}${atts.length > 3 ? `<span class="muted small">+${atts.length - 3} more</span>` : ''}</div>` : '')
-      : `<div class="sec-label">Attachments${atts.length ? ' · ' + atts.length : ''}</div><div class="att-list">${attChips(atts)}</div><div class="att-drop sm" tabindex="0" role="button">📎 Drop files or Outlook emails on this meeting, or <u>browse</u></div>`}
-    ${!compact && m.minutes ? `<details class="minutes"><summary>Full minutes</summary><pre>${esc(m.minutes)}</pre></details>` : ''}
+    <div class="meta">${fmtDate(m.date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}${people.length ? ' · ' + plural(people.length, 'attendee') : ''}</div>
+    <h3><a href="#" class="mlink" data-open-meeting="${esc(m.id)}">${esc(m.title)}</a></h3>
+    ${d.themes.length ? `<div class="md-themes" style="margin-top:6px">${d.themes.slice(0, 3).map(t => `<span class="theme">${esc(t)}</span>`).join('')}</div>` : ''}
+    ${d.points.length ? `<ul class="mc-points">${d.points.slice(0, 3).map(p => `<li>${p.topic ? `<b>${esc(p.topic)}:</b> ` : ''}${esc(clip(p.text, 140))}</li>`).join('')}</ul>` : ''}
+    <div class="mc-stats"><span>📋 ${acts.length ? `${open} open of ${acts.length}` : 'No actions'}${od ? ` · <span class="overdue-text">${od} overdue</span>` : ''}</span><span>✓ ${plural(d.decisions.length, 'decision')}</span><span>⚑ ${d.risks.length} risk${d.risks.length === 1 ? '' : 's'}</span>${atts.length ? `<span>📎 ${atts.length}</span>` : ''}<span class="spacer"></span><a href="#" class="small" data-open-meeting="${esc(m.id)}">Open meeting →</a></div>
   </div>`;
 }
+let selMeeting = null;
+function meetingDetail(m) {
+  const d = meetingDigest(m), acts = state.actions.filter(a => a.meetingId === m.id), atts = attsFor('meeting', m.id);
+  const open = acts.filter(a => a.status !== 'Done').length, od = acts.filter(isOverdue).length, people = peopleOf(m);
+  const stat = (icon, n, one, many, cls = '') => `<span class="md-stat ${cls}">${icon} <b>${n}</b> ${n === 1 ? one : many}</span>`;
+  return `<div class="card meeting-card meeting-detail" data-drop-type="meeting" data-drop-id="${esc(m.id)}">
+    <div class="md-head"><div class="grow">
+        <div class="md-date">${fmtDate(m.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
+        <h2 class="md-title">${esc(m.title)}</h2>
+        ${people.length ? `<div class="md-people">${people.map(x => `<span class="person">${esc(x)}</span>`).join('')}</div>` : ''}
+      </div>
+      <div class="md-actions"><button class="btn sm" data-add-action="${esc(m.id)}">+ Action item</button><button class="btn sm" data-edit-meeting="${esc(m.id)}">✎ Edit</button><button class="btn sm danger" data-del-meeting="${esc(m.id)}">Delete</button></div>
+    </div>
+    <div class="md-stats">${stat('📋', acts.length, 'action item', 'action items')}${acts.length ? `<span class="md-stat"><b>${open}</b> open</span>` : ''}${od ? stat('⚠', od, 'overdue', 'overdue', 'overdue-text') : ''}${stat('✓', d.decisions.length, 'decision', 'decisions')}${stat('⚑', d.risks.length, 'risk / issue', 'risks / issues')}${stat('📎', atts.length, 'file', 'files')}</div>
+    <section class="md-sec"><h3>Summary</h3><p class="md-summary">${meetingNarrative(m, d)}</p>${d.themes.length ? `<div class="md-themes"><span class="muted small">Topics</span>${d.themes.map(t => `<span class="theme">${esc(t)}</span>`).join('')}</div>` : ''}</section>
+    ${d.points.length ? `<section class="md-sec"><h3>Key talking points</h3><ul class="tp-list">${d.points.map(x => `<li>${x.topic ? `<span class="tp-topic">${esc(x.topic)}</span>` : ''}<span>${esc(x.text)}</span></li>`).join('')}</ul></section>` : ''}
+    ${d.decisions.length || d.risks.length ? `<div class="md-cols">
+      <section class="md-sec"><h3>Decisions</h3>${d.decisions.length ? `<ul class="md-list dec">${d.decisions.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted small">None recorded</p>'}</section>
+      <section class="md-sec"><h3>Risks &amp; issues</h3>${d.risks.length ? `<ul class="md-list risk">${d.risks.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted small">None recorded</p>'}</section>
+    </div>` : ''}
+    <section class="md-sec"><h3>Action items</h3>${acts.length ? `<table class="md-acts"><tbody>${sortActs(acts).map(a => `<tr class="${a.status === 'Done' ? 'done-row' : ''}"><td style="width:120px">${statusPill(a)}</td><td><span class="act-text">${esc(a.text)}</span>${a.source ? ' <span class="muted small">· from attachment</span>' : ''}</td><td class="small" style="white-space:nowrap">${esc(a.owner)}</td><td class="small" style="white-space:nowrap">${a.due ? (a.status === 'Done' ? fmtDate(a.due) : relDue(a.due)) : '<span class="muted">No due date</span>'}</td><td style="width:80px;text-align:right">${a.status === 'Done' ? '' : `<button class="btn sm" data-done="${esc(a.id)}">✓ Done</button>`}</td></tr>`).join('')}</tbody></table>` : '<p class="muted small" style="margin:0">No action items yet.</p>'}</section>
+    <section class="md-sec"><h3>Attachments</h3><div class="att-list">${attChips(atts)}</div><div class="att-drop sm" tabindex="0" role="button">📎 Drop files or Outlook emails here, or <u>browse</u> — action items inside are logged automatically</div></section>
+    ${m.minutes ? `<details class="minutes"><summary>Full minutes</summary><pre>${esc(m.minutes)}</pre></details>` : ''}
+  </div>`;
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-open-meeting]'); if (!t) return;
+  e.preventDefault(); selMeeting = t.dataset.openMeeting;
+  if (currentView !== 'meetings') { document.getElementById('meetingSearch').value = ''; showView('meetings'); }
+  renderMeetings();
+  const det = document.querySelector('.mt-detail'); if (det && window.innerWidth < 900) det.scrollIntoView({ block: 'start' });
+});
 
 /* ---- charts ---- */
 function roundRightPath(x, y, w, h, r) {
@@ -1437,8 +1596,14 @@ function renderWeekChart(s) {
 /* ---- meetings view ---- */
 function renderMeetings() {
   const q = document.getElementById('meetingSearch').value.trim().toLowerCase();
-  const ms = [...state.meetings].sort((a,b) => b.date.localeCompare(a.date)).filter(m => !q || (m.title + ' ' + m.attendees + ' ' + m.minutes).toLowerCase().includes(q));
-  document.getElementById('meetingList').innerHTML = ms.length ? ms.map(m => meetingCard(m, false)).join('') : `<div class="card empty">${state.meetings.length ? 'No meetings match your search' : 'No meetings yet. Upload a minutes file on the Dashboard or click “+ Meeting minutes”.'}</div>`;
+  const ms = [...state.meetings].sort((a, b) => b.date.localeCompare(a.date)).filter(m => !q || (m.title + ' ' + m.attendees + ' ' + m.minutes).toLowerCase().includes(q));
+  const host = document.getElementById('meetingList');
+  if (!ms.length) { host.innerHTML = `<div class="card empty">${state.meetings.length ? 'No meetings match your search' : 'No meetings yet. Upload minutes or drag an Outlook email onto the Dashboard, or click “+ Meeting minutes”.'}</div>`; return; }
+  if (!ms.some(m => m.id === selMeeting)) selMeeting = ms[0].id;
+  host.innerHTML = `<div class="mt-layout"><nav class="mt-list" aria-label="Meetings">${ms.map(m => {
+    const acts = state.actions.filter(a => a.meetingId === m.id), open = acts.filter(a => a.status !== 'Done').length, od = acts.filter(isOverdue).length, na = attsFor('meeting', m.id).length;
+    return `<button type="button" class="mt-item ${m.id === selMeeting ? 'sel' : ''}" data-open-meeting="${esc(m.id)}" ${m.id === selMeeting ? 'aria-current="true"' : ''}><span class="mt-date">${fmtDate(m.date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span><span class="mt-title">${esc(m.title)}</span><span class="mt-meta">${acts.length ? `${open} open action${open === 1 ? '' : 's'}` : 'No actions'}${od ? ` · <span class="overdue-text">${od} overdue</span>` : ''}${na ? ` · 📎 ${na}` : ''}</span></button>`;
+  }).join('')}</nav><div class="mt-detail">${meetingDetail(ms.find(m => m.id === selMeeting))}</div></div>`;
 }
 document.getElementById('meetingSearch').addEventListener('input', renderMeetings);
 
@@ -1449,8 +1614,8 @@ function renderActionFilters() {
   const ov = fo.value, mv = fm.value;
   fo.innerHTML = '<option value="">All owners</option>' + owners().map(o => `<option>${esc(o)}</option>`).join('');
   fo.value = owners().includes(ov) ? ov : '';
-  fm.innerHTML = '<option value="">All meetings</option><option value="__none">No meeting</option>' + [...state.meetings].sort((a,b) => b.date.localeCompare(a.date)).map(m => `<option value="${esc(m.id)}">${esc(m.title)} (${fmtDate(m.date)})</option>`).join('');
-  fm.value = mv && (mv === '__none' || meetingById(mv)) ? mv : '';
+  fm.innerHTML = '<option value="">All meetings</option><option value="__none">No meeting</option><option value="__att">From attachments</option>' + [...state.meetings].sort((a,b) => b.date.localeCompare(a.date)).map(m => `<option value="${esc(m.id)}">${esc(m.title)} (${fmtDate(m.date)})</option>`).join('');
+  fm.value = mv && (mv === '__none' || mv === '__att' || meetingById(mv)) ? mv : '';
 }
 function renderActions() {
   const q = document.getElementById('fSearch').value.trim().toLowerCase();
@@ -1461,7 +1626,8 @@ function renderActions() {
     if (fs === 'overdue' && !isOverdue(a)) return false;
     if (['Open','In Progress','Done'].includes(fs) && a.status !== fs) return false;
     if (fm === '__none' && a.meetingId) return false;
-    if (fm && fm !== '__none' && a.meetingId !== fm) return false;
+    if (fm === '__att' && !a.source) return false;
+    if (fm && fm !== '__none' && fm !== '__att' && a.meetingId !== fm) return false;
     if (q) { const m = meetingById(a.meetingId); if (!(a.text + ' ' + a.owner + ' ' + (a.notes || '') + ' ' + (m ? m.title : '')).toLowerCase().includes(q)) return false; }
     return true;
   });
@@ -2099,6 +2265,238 @@ function showEmail(a, em, blob) {
   document.getElementById('emailDialog').showModal();
 }
 
+
+/* ---------------- action items inside attachments ---------------- */
+/* Every attached file is read (Word, PowerPoint, Excel/CSV, text, email, HTML, PDF best-effort).
+   Items under an "Action Items" / "Next Steps" / "To-dos" heading, rows of an Action | Owner | Due
+   table, and "Action: …" lines are logged as action items, linked to the file and its meeting. */
+const ACT_HEAD_RE = /^\s*(?:#{1,6}\s*|[*_]{1,2})?(?:\d+(?:\.\d+)*[.)]?\s+)?(action items?|actions?(?: list| log| register| tracker| points| required)?|open actions|agreed actions|next steps|to-?dos?|follow[- ]?ups?|follow[- ]up actions|tasks?(?: list)?|assigned actions)\s*[*_]{0,2}\s*(?:\([^)]*\))?\s*[:\-–—]?\s*$/i;
+const SECTION_END_RE = /^\s*(?:#{1,6}\s+\S|(?:decisions?|key decisions|risks?|issues?|risks? (?:&|and) issues|notes?|attendees|present|apologies|agenda|summary|discussion|key points|updates?|minutes|aob|any other business|next meeting|date of next meeting|questions|parking lot|appendix|background|attachments?|thanks|regards|kind regards|best regards|best|cheers)\b[^|]{0,40}:?,?\s*$)/i;
+const BULLET_RE = /^\s*(?:[-*•–·▪◦>]|\d+[.)]|[a-z][.)]|\[[ xX✓]?\]|☐|☑|✔|✓)\s*/;
+const DONE_RE = /^\s*(?:[-*•]\s*)?(?:\[[xX✓]\]|☑|✔|✓)|\((?:done|completed|closed)\)\s*$/i;
+const tableCells = l => l.includes(' | ') || /^\|/.test(l) ? l.replace(/^\||\|$/g, '').split('|').map(c => c.trim()) : l.includes('\t') ? l.split('\t').map(c => c.trim()) : null;
+function mapActCols(cells) {
+  const f = re => cells.findIndex(c => re.test(c));
+  const col = { text: f(/^(action( item)?s?|task|tasks|item|description|what|action required|action description|actions? \/ tasks?|next steps?)$/i),
+    owner: f(/^(owner|owners|responsible|assigned( to)?|who|lead|assignee|action by|by whom|action owner|person)$/i), due: f(/^(due|due date|deadline|target( date)?|by when|when|date due|completion date)$/i), status: f(/^(status|state|done\??|complete\??)$/i) };
+  if (col.text < 0) col.text = f(/action|task|item|description/i);
+  if (col.owner < 0) col.owner = f(/owner|responsib|assign|who/i);
+  if (col.due < 0) col.due = f(/due|deadline|target|when/i);
+  if (col.text < 0 || (col.owner < 0 && col.due < 0)) return null;
+  return col;
+}
+function lineToItem(raw) {
+  const done = DONE_RE.test(raw);
+  let body = raw.replace(BULLET_RE, '').replace(BULLET_RE, '').replace(/\s*\((?:done|completed|closed)\)\s*$/i, '').trim();
+  const m = ACTION_RE.exec(body); if (m) body = m[1].trim();
+  if (body.length < 4 || /^(none|n\/a|tbc|tbd|no (?:new )?actions?)\.?$/i.test(body)) return null;
+  let { text, owner, due } = parseActionLine(body), mm;
+  if (!owner && (mm = /^([A-Z][a-z'’]+(?:\s+[A-Z][a-z'’-]+)?)\s+(?:to|will|should|must|needs? to)\s+(.{3,})$/.exec(text))) { owner = mm[1]; text = mm[2].charAt(0).toUpperCase() + mm[2].slice(1); }
+  if (!text || text.length < 3) return null;
+  return { text: text.replace(/[.;,]\s*$/, ''), owner, due, done };
+}
+function findActionItems(text) {
+  const lines = String(text || '').replace(/\r/g, '').split('\n');
+  const items = []; let inSec = false, table = null, blank = false;
+  for (const raw of lines) {
+    const l = raw.trim();
+    if (l === '\f') { inSec = false; table = null; blank = false; continue; }
+    if (!l) { blank = true; table = null; continue; }
+    const cells = tableCells(l);
+    if (cells && cells.length >= 2) { const c = mapActCols(cells); if (c) { table = c; blank = false; continue; } }
+    if (table && cells) {
+      const g = k => table[k] >= 0 ? (cells[table[k]] || '') : '';
+      const t = g('text').replace(BULLET_RE, '').trim();
+      if (t.length > 2 && !/^[-=]+$/.test(t)) items.push({ text: t.replace(/[.;]\s*$/, ''), owner: g('owner').replace(/\[[^\]]*\]/g, '').trim(), due: planDate(g('due')), done: /^(done|complete|completed|closed|yes|y|✓|✔|100%)$/i.test(g('status').trim()) });
+      blank = false; continue;
+    }
+    table = null;
+    if (ACT_HEAD_RE.test(l)) { inSec = true; blank = false; continue; }
+    if (inSec) {
+      const bullet = BULLET_RE.test(raw);
+      if (!bullet && (SECTION_END_RE.test(l) || (blank && /:$/.test(l) && l.length < 60))) inSec = false;
+      else { const it = lineToItem(raw); if (it) items.push(it); blank = false; continue; }
+    }
+    const m = ACTION_RE.exec(l) || CHECKBOX_RE.exec(l);
+    if (m && m[1].trim().length > 2) { const it = lineToItem(m[1]); if (it) items.push(it); }
+    blank = false;
+  }
+  const seen = new Set();
+  return items.filter(it => { const k = it.text.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 100);
+}
+
+/* ---- text readers for attachments ---- */
+async function inflateBytes(u8, fmt) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream(fmt))).arrayBuffer()); }
+async function pptxText(buf) {
+  const z = await unzip(buf), A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+  const slides = z.names.filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a, b) => +a.match(/(\d+)\.xml$/)[1] - +b.match(/(\d+)\.xml$/)[1]);
+  const out = [];
+  for (const n of slides) {
+    const doc = new DOMParser().parseFromString(await z.read(n), 'application/xml'), lines = [];
+    const texts = el => [...el.getElementsByTagNameNS(A, 't')].map(t => t.textContent).join('');
+    const walk = el => { for (const c of el.children) {
+      if (c.localName === 'tbl') { for (const tr of c.getElementsByTagNameNS(A, 'tr')) lines.push([...tr.children].filter(x => x.localName === 'tc').map(tc => [...tc.getElementsByTagNameNS(A, 'p')].map(texts).join(' ').trim()).join(' | ')); lines.push(''); }
+      else if (c.localName === 'p' && c.namespaceURI === A) { const t = texts(c); if (t.trim()) lines.push(t); }
+      else walk(c);
+    } };
+    walk(doc.documentElement);
+    out.push(lines.join('\n'));
+  }
+  return out.join('\n\f\n');
+}
+function pdfStr(tok) {
+  if (tok[0] === '(') {
+    const s = tok.slice(1, -1); let o = '';
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i]; if (c !== '\\') { o += c; continue; }
+      const n = s[++i];
+      if (n === 'n') o += '\n'; else if (n === 't') o += ' '; else if (n === 'r' || n === '\n' || n === '\r') { /* skip */ }
+      else if (/[0-7]/.test(n)) { let d = n; while (d.length < 3 && /[0-7]/.test(s[i + 1])) d += s[++i]; o += String.fromCharCode(parseInt(d, 8)); }
+      else o += n;
+    }
+    return o;
+  }
+  const h = tok.slice(1, -1).replace(/\s/g, ''), b = [];
+  for (let i = 0; i < h.length; i += 2) b.push(parseInt(h.substr(i, 2).padEnd(2, '0'), 16));
+  if (b.length >= 2 && b.length % 2 === 0 && b.filter((x, i) => i % 2 === 0 && x === 0).length >= b.length / 4) { let o = ''; for (let i = 0; i < b.length; i += 2) o += String.fromCharCode(b[i] * 256 + b[i + 1]); return o; }
+  return String.fromCharCode(...b);
+}
+function pdfOps(content) {
+  const re = /\(|<[0-9A-Fa-f\s]*>|\[|\]|-?\d*\.?\d+|\/[^\s\/\[\]()<>{}%]+|[A-Za-z'"*]+/g;
+  const lines = []; let cur = '', ops = [], arr = null, inText = false, lastY = null, m;
+  const nl = () => { if (cur.trim()) lines.push(cur.replace(/\s+/g, ' ').trim()); cur = ''; };
+  while ((m = re.exec(content))) {
+    let t = m[0];
+    if (t === '(') {   // literal string: balanced parentheses need no escaping in PDF
+      let i = m.index + 1, depth = 1;
+      for (; i < content.length && depth; i++) { const c = content[i]; if (c === '\\') i++; else if (c === '(') depth++; else if (c === ')') depth--; }
+      t = content.slice(m.index, i); re.lastIndex = i;
+    }
+    if (t === 'BT') { inText = true; ops = []; continue; }
+    if (t === 'ET') { inText = false; nl(); continue; }
+    if (!inText) continue;
+    if (t[0] === '(' || t[0] === '<') { const v = pdfStr(t); if (arr) arr.push(v); else ops.push(v); continue; }
+    if (t === '[') { arr = []; continue; }
+    if (t === ']') { ops.push(arr || []); arr = null; continue; }
+    if (/^-?\d*\.?\d+$/.test(t)) { if (arr) { if (+t < -180) arr.push(' '); } else ops.push(+t); continue; }
+    if (t[0] === '/') { ops.push(t); continue; }
+    if (t === 'Tj' || t === "'" || t === '"') { if (t !== 'Tj') nl(); const v = ops.filter(x => typeof x === 'string' && x[0] !== '/').pop(); if (v) cur += v; }
+    else if (t === 'TJ') { const a = ops.filter(Array.isArray).pop(); if (a) cur += a.join(''); }
+    else if (t === 'Td' || t === 'TD') { const y = ops[ops.length - 1]; if (typeof y === 'number' && Math.abs(y) > 0.5) nl(); else if (cur && !/\s$/.test(cur)) cur += ' '; }
+    else if (t === 'T*') nl();
+    else if (t === 'Tm') { const y = ops[ops.length - 1]; if (typeof y === 'number') { if (lastY !== null && Math.abs(y - lastY) > 0.5) nl(); lastY = y; } }
+    ops = [];
+  }
+  nl();
+  return lines.join('\n');
+}
+async function pdfText(buf) {
+  const u8 = new Uint8Array(buf), s = binStr(u8), out = [];
+  const re = /stream\r?\n/g; let m, guard = 0;
+  while ((m = re.exec(s)) && guard++ < 3000) {
+    const start = m.index + m[0].length, end = s.indexOf('endstream', start); if (end < 0) break;
+    re.lastIndex = end + 9;
+    const before = s.slice(Math.max(0, m.index - 400), m.index), d = before.slice(before.lastIndexOf('<<'));
+    if (/\/Subtype\s*\/Image|\/Length1|\/FontFile|\/Type\s*\/(XRef|ObjStm|Metadata)/.test(d)) continue;
+    let e = end; while (e > start && (u8[e - 1] === 10 || u8[e - 1] === 13)) e--;
+    let body = null;
+    try { body = /FlateDecode/.test(d) ? binStr(await inflateBytes(u8.subarray(start, e), 'deflate')) : (/\/Filter/.test(d) ? null : s.slice(start, e)); } catch (err) { body = null; }
+    if (body && /\bBT\b/.test(body)) out.push(pdfOps(body));
+  }
+  const text = out.join('\n').replace(/\x95/g, '•').replace(/\x96/g, '–').replace(/\x97/g, '—').replace(/[\x91\x92]/g, '\'').replace(/[\x93\x94]/g, '"');
+  const letters = (text.match(/[A-Za-z]/g) || []).length;
+  return letters > 20 && letters > text.length * 0.35 ? text : '';   // scanned or glyph-encoded PDFs yield nothing usable
+}
+async function textForScan(name, type, buf) {
+  const n = (name || '').toLowerCase(), asFile = () => new File([buf], name, { type });
+  if (/\.docx$/.test(n)) return readDocx(asFile());
+  if (/\.pptx$/.test(n)) return pptxText(buf);
+  if (/\.(xlsx|xlsm)$/.test(n)) return (await parseXlsx(buf)).map(sh => sh.rows.map(r => [...(r || [])].map(v => v == null ? '' : (typeof v === 'number' && v > 20000 && v < 80000 ? planDate(v) : String(v))).join(' | ')).join('\n')).join('\n\f\n');
+  if (/\.csv$/.test(n)) return parseCSV(new TextDecoder().decode(buf)).map(r => r.join(' | ')).join('\n');
+  if (/\.(msg|eml)$/.test(n) || /rfc822|ms-outlook/.test(type || '')) { const em = await parseEmail(asFile()); return em.body || ''; }
+  if (/\.html?$/.test(n) || type === 'text/html') return htmlToText(new TextDecoder().decode(buf));
+  if (/\.(txt|md|text|log)$/.test(n) || /^text\/plain/.test(type || '')) return new TextDecoder().decode(buf);
+  if (/\.pdf$/.test(n) || type === 'application/pdf') return pdfText(buf);
+  return '';
+}
+
+/* ---- logging & summaries ---- */
+function logExtracted(att, items) {
+  const meetingId = att.parentType === 'meeting' ? att.parentId : ((state.actions.find(a => a.id === att.parentId) || {}).meetingId || '');
+  const m = meetingById(meetingId), people = (m ? String(m.attendees || '').split(/[,;]/).map(x => x.trim()).filter(Boolean) : []).concat(items.map(i => i.owner).filter(o => o && /\s/.test(o)));
+  const existing = new Set(state.actions.map(a => a.text.toLowerCase())), ids = [];
+  for (const it of items) {
+    const k = it.text.toLowerCase(); if (existing.has(k)) continue; existing.add(k);
+    const a = { id: uid(), text: it.text, owner: resolveOwner(it.owner, people) || 'Unassigned', due: it.due || '', status: it.done ? 'Done' : 'Open', priority: 'Medium', meetingId, notes: 'From attachment: ' + att.name, source: { attachmentId: att.id }, createdAt: Date.now() };
+    markCompleted(a); state.actions.push(a); ids.push(a.id);
+  }
+  att.scan = { at: Date.now(), found: items.length, actionIds: ids };
+  return ids.length;
+}
+async function scanAttachment(att, buf) {
+  try { const text = await textForScan(att.name, att.type, buf); return logExtracted(att, text ? findActionItems(text) : []); }
+  catch (e) { console.warn('could not scan', att.name, e); att.scan = { at: Date.now(), found: 0, actionIds: [], error: String(e.message || e) }; return 0; }
+}
+let scanning = false;
+/** Files attached before this feature (or on another version) are scanned once, after sign-in. */
+async function scanExisting() {
+  if (scanning || !cryptoKey) return;
+  const todo = state.attachments.filter(a => !a.scan); if (!todo.length) return;
+  scanning = true; const me = currentId; let n = 0, files = 0;
+  try {
+    for (const a of todo) {
+      if (currentId !== me) return;
+      const r = await getFile(a.id).catch(() => null);
+      if (!r) { a.scan = { at: Date.now(), found: 0, actionIds: [] }; continue; }
+      const k = await scanAttachment(a, await decFile(cryptoKey, r));
+      if (k) { n += k; files++; }
+    }
+  } finally { scanning = false; }
+  if (currentId !== me) return;
+  save();
+  if (n) toast(`Found ${plural(n, 'action item')} in ${plural(files, 'existing attachment')} — logged on the dashboard`);
+}
+const loggedFrom = a => (a.scan && a.scan.actionIds ? a.scan.actionIds.map(id => state.actions.find(x => x.id === id)).filter(Boolean) : []);
+function summarizeActs(list) {
+  if (!list.length) return '';
+  const own = {}; list.forEach(a => { const k = a.owner || 'Unassigned'; own[k] = (own[k] || 0) + 1; });
+  const owners = Object.entries(own).sort((a, b) => b[1] - a[1]);
+  const dues = list.filter(a => a.due).map(a => a.due).sort();
+  const parts = [plural(list.length, 'action item'), owners.slice(0, 4).map(([o, n]) => `${o} (${n})`).join(', ') + (owners.length > 4 ? `, +${owners.length - 4} more` : '')];
+  if (dues.length) parts.push(dues[0] === dues[dues.length - 1] ? `due ${fmtDate(dues[0])}` : `due ${fmtDate(dues[0])} – ${fmtDate(dues[dues.length - 1])}`);
+  const od = list.filter(isOverdue).length, dn = list.filter(a => a.status === 'Done').length, nd = list.length - dues.length;
+  if (od) parts.push(`${od} overdue`); if (dn) parts.push(`${dn} done`); if (nd) parts.push(`${nd} without a due date`);
+  return parts.join(' · ');
+}
+function renderExtractCard() {
+  const el = document.getElementById('extractCard'); if (!el) return;
+  const list = state.attachments.filter(a => loggedFrom(a).length).sort((a, b) => b.scan.at - a.scan.at);
+  el.hidden = !list.length; if (!list.length) { el.innerHTML = ''; return; }
+  const all = list.flatMap(loggedFrom);
+  el.innerHTML = `<h2>Action items from attachments <span class="hint">${plural(all.length, 'item')} found in ${plural(list.length, 'file')}</span></h2>
+    <p class="small" style="margin:0 0 6px">${esc(summarizeActs(all))}</p>
+    ${list.slice(0, 6).map(a => {
+      const acts = loggedFrom(a), parent = a.parentType === 'meeting' ? meetingById(a.parentId) : state.actions.find(x => x.id === a.parentId);
+      const where = parent ? (a.parentType === 'meeting' ? 'Meeting: ' + parent.title : 'Action item: ' + parent.text) : '';
+      return `<div class="extract-group">
+        <div class="extract-head"><a href="#" data-att-open="${esc(a.id)}">${a.email ? '✉' : fileIcon(a.name, a.type)} ${esc((a.email && a.email.subject) || a.name)}</a><span class="muted small">${esc(where)}</span><span class="spacer"></span><button class="btn sm" data-unlog="${esc(a.id)}" title="Remove the action items that were logged from this file">Remove these</button></div>
+        <div class="small muted" style="margin:2px 0 4px">${esc(summarizeActs(acts))}</div>
+        <ul class="extract-list">${acts.slice(0, 8).map(x => `<li>${statusPill(x)} <span class="${x.status === 'Done' ? 'muted' : ''}">${esc(x.text)}</span> <span class="muted">— ${esc(x.owner)}${x.due ? ',' : ''}</span> ${x.due ? (x.status === 'Done' ? fmtDate(x.due) : relDue(x.due, true)) : ''}</li>`).join('')}${acts.length > 8 ? `<li class="muted">+${acts.length - 8} more</li>` : ''}</ul>
+      </div>`;
+    }).join('')}
+    <p class="small" style="margin:8px 0 0"><a href="#" data-goto-att>View all ${all.length} on the Action Items tab →</a></p>`;
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-unlog],[data-goto-att]'); if (!t) return;
+  e.preventDefault();
+  if (t.dataset.unlog) {
+    const a = state.attachments.find(x => x.id === t.dataset.unlog); if (!a || !a.scan) return;
+    const ids = new Set(a.scan.actionIds), n = state.actions.filter(x => ids.has(x.id)).length;
+    if (!confirm(`Remove the ${plural(n, 'action item')} that were logged from “${a.name}”? The file itself stays attached.`)) return;
+    state.actions = state.actions.filter(x => !ids.has(x.id)); a.scan.actionIds = []; save(); toast(`Removed ${plural(n, 'action item')}`);
+  } else { document.getElementById('fMeeting').value = '__att'; document.getElementById('fStatus').value = ''; document.getElementById('fOwner').value = ''; renderActions(); showView('actions'); }
+});
+
 /* ---------------- attachments (drag & drop, encrypted) ---------------- */
 const fmtSize = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
 const fileIcon = (name, type) => /\.(msg|eml)$/i.test(name) ? '✉' : /pdf/i.test(type + name) ? '📕' : /image\//.test(type) ? '🖼' : /sheet|excel|csv|\.xlsx?$/i.test(type + name) ? '📊' : /presentation|powerpoint|\.pptx?$/i.test(type + name) ? '📽' : /word|\.docx?$/i.test(type + name) ? '📄' : '📎';
@@ -2107,20 +2505,23 @@ const staged = { meeting: [], action: [] };   // files dropped into a dialog bef
 
 async function addAttachments(files, parentType, parentId) {
   if (!cryptoKey) return 0;
-  let added = 0; const skipped = [];
+  let added = 0, logged = 0; const skipped = [];
   for (const f of files) {
     if (f.size > MAX_FILE) { skipped.push(f.name + ' (over 25 MB)'); continue; }
     try {
       const id = uid();
       let email = null;
       if (isEmailFile(f)) { try { email = emailMeta(await parseEmail(f)); } catch (err) { console.warn('email not readable', err); } }
-      await putFile({ id, ...(await encFile(cryptoKey, await f.arrayBuffer())) });
-      state.attachments.push({ id, parentType, parentId, name: f.name, size: f.size, type: f.type || '', addedAt: Date.now(), ...(email ? { email } : {}) });
+      const buf = await f.arrayBuffer();
+      await putFile({ id, ...(await encFile(cryptoKey, buf)) });
+      const meta = { id, parentType, parentId, name: f.name, size: f.size, type: f.type || '', addedAt: Date.now(), ...(email ? { email } : {}) };
+      state.attachments.push(meta);
+      logged += await scanAttachment(meta, buf);
       added++;
     } catch (e) { console.error(e); skipped.push(f.name + ' (' + (e.message || 'storage error') + ')'); }
   }
   if (added) save();
-  toast((added ? `Attached ${plural(added, 'file')} (encrypted)` : 'No files attached') + (skipped.length ? ' · skipped: ' + skipped.join(', ') : ''));
+  toast((added ? `Attached ${plural(added, 'file')} (encrypted)` : 'No files attached') + (logged ? ` · ${plural(logged, 'action item')} found and logged` : '') + (skipped.length ? ' · skipped: ' + skipped.join(', ') : ''));
   refreshDialogAtts();
   return added;
 }
@@ -2145,9 +2546,10 @@ async function removeAttachments(ids) {
   for (const id of ids) await delFile(id).catch(() => {});
   state.attachments = state.attachments.filter(a => !ids.has(a.id));
 }
+const attBadge = a => { const n = loggedFrom(a).length; return n ? `<span class="att-badge" title="${plural(n, 'action item')} logged from this file">📋 ${n}</span>` : ''; };
 function attChips(list, opts = {}) {
-  return list.map(a => a.email ? `<span class="att-chip"><a href="#" data-att-open="${esc(a.id)}" title="Open email: ${esc(a.email.subject || a.name)}">✉ ${esc(a.email.subject || a.name)}</a><span class="muted">${esc(emailNames(a.email.from)[0] || '')}${a.email.date ? ' · ' + esc(fmtDate(toISO(new Date(a.email.date)))) : ''}</span>${opts.noDelete ? '' : `<button type="button" class="att-x" data-att-del="${esc(a.id)}" title="Remove attachment" aria-label="Remove ${esc(a.name)}">×</button>`}</span>`
-  : `<span class="att-chip"><a href="#" data-att-open="${esc(a.id)}" title="Download ${esc(a.name)}">${fileIcon(a.name, a.type)} ${esc(a.name)}</a><span class="muted">${fmtSize(a.size)}</span>${opts.noDelete ? '' : `<button type="button" class="att-x" data-att-del="${esc(a.id)}" title="Remove attachment" aria-label="Remove ${esc(a.name)}">×</button>`}</span>`).join('');
+  return list.map(a => a.email ? `<span class="att-chip"><a href="#" data-att-open="${esc(a.id)}" title="Open email: ${esc(a.email.subject || a.name)}">✉ ${esc(a.email.subject || a.name)}</a><span class="muted">${esc(emailNames(a.email.from)[0] || '')}${a.email.date ? ' · ' + esc(fmtDate(toISO(new Date(a.email.date)))) : ''}</span>${attBadge(a)}${opts.noDelete ? '' : `<button type="button" class="att-x" data-att-del="${esc(a.id)}" title="Remove attachment" aria-label="Remove ${esc(a.name)}">×</button>`}</span>`
+  : `<span class="att-chip"><a href="#" data-att-open="${esc(a.id)}" title="Download ${esc(a.name)}">${fileIcon(a.name, a.type)} ${esc(a.name)}</a><span class="muted">${fmtSize(a.size)}</span>${attBadge(a)}${opts.noDelete ? '' : `<button type="button" class="att-x" data-att-del="${esc(a.id)}" title="Remove attachment" aria-label="Remove ${esc(a.name)}">×</button>`}</span>`).join('');
 }
 function stagedChips(kind) {
   return staged[kind].map((f, i) => `<span class="att-chip staged"><span>${fileIcon(f.name, f.type)} ${esc(f.name)}</span><span class="muted">${fmtSize(f.size)} · added on save</span><button type="button" class="att-x" data-stage-del="${kind}:${i}" aria-label="Remove ${esc(f.name)}">×</button></span>`).join('');
@@ -2268,6 +2670,7 @@ function signedIn() {
   lockPass.value = ''; lockPass2.value = '';
   document.getElementById('whoami').textContent = 'Signed in as ' + currentUser;
   render(); resetIdle();
+  setTimeout(scanExisting, 400);
 }
 function lockNow(note) {
   clearTimeout(idleTimer);
