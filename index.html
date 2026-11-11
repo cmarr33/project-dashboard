@@ -170,6 +170,34 @@ dialog h2 { margin: 0 0 14px; font-size: 17px; }
 .toast.on { opacity: 1; }
 .hit { fill: transparent; cursor: default; }
 .mark-hover { opacity: .85; }
+/* project plan */
+.plan-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.pbar { display: inline-block; width: 64px; height: 6px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--border); vertical-align: middle; overflow: hidden; }
+.pbar > span { display: block; height: 100%; background: var(--series-1); border-radius: 3px; }
+.pct-cell { white-space: nowrap; }
+.pct-input { width: 56px; margin-left: 6px; border: 1px solid var(--border); background: var(--surface-1); border-radius: 6px; padding: 2px 4px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.pct-num { margin-left: 6px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.plan-name { display: flex; align-items: center; gap: 4px; min-width: 220px; }
+.plan-sum td { font-weight: 600; background: var(--surface-2); }
+.caret { border: 0; background: none; cursor: pointer; color: var(--text-secondary); width: 18px; padding: 0; font-size: 11px; }
+.caret-sp { display: inline-block; width: 18px; flex: none; }
+.ms { color: var(--text-secondary); font-size: 11px; }
+.gantt-cell { min-width: 200px; width: 26%; }
+.gantt { position: relative; height: 16px; }
+.gantt-bar { position: absolute; top: 4px; height: 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--axis); overflow: hidden; box-sizing: border-box; min-width: 4px; }
+.gantt-bar.sum { top: 6px; height: 5px; border-color: var(--text-secondary); }
+.gantt-bar > span { display: block; height: 100%; }
+.gantt-ms { position: absolute; top: 3px; width: 10px; height: 10px; transform: translateX(-5px) rotate(45deg); border-radius: 2px; box-shadow: 0 0 0 2px var(--surface-1); }
+.gantt-today { position: absolute; top: -8px; bottom: -8px; width: 0; border-left: 1.5px dashed var(--critical); opacity: .6; }
+.gantt-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); font-weight: 400; }
+.hbar-row { display: grid; grid-template-columns: minmax(90px, 34%) 1fr 92px; gap: 10px; align-items: center; margin: 7px 0; font-size: 12px; }
+.hbar-row .lbl { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar-track { height: 10px; background: var(--surface-2); border-radius: 0 5px 5px 0; position: relative; }
+.hbar-track > span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--series-1); border-radius: 0 5px 5px 0; }
+.hbar-row .val { font-variant-numeric: tabular-nums; color: var(--text-primary); text-align: right; }
+.plan-card-list { margin: 10px 0 0; padding: 0; list-style: none; }
+.plan-card-list li { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--grid); font-size: 13px; }
+.plan-card-list li .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* attachments */
 .att-drop { border: 1.5px dashed var(--axis); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--text-secondary); cursor: pointer; text-align: center; transition: background .12s, border-color .12s; }
 .att-drop:hover, .att-drop:focus-visible { border-color: var(--accent); background: var(--wash); outline: none; }
@@ -237,6 +265,7 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
     <button role="tab" data-view="dashboard" aria-selected="true">Dashboard</button>
     <button role="tab" data-view="meetings" aria-selected="false">Meetings</button>
     <button role="tab" data-view="actions" aria-selected="false">Action Items</button>
+    <button role="tab" data-view="plan" aria-selected="false">Project Plan</button>
   </nav>
   <div class="spacer"></div>
   <button class="btn" id="btnAddMeeting">+ Meeting minutes</button>
@@ -259,7 +288,7 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
       <div class="card">
         <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload files">
           <strong>Drop files here</strong> or click to upload
-          <div class="types">Minutes: .docx, .txt, .md &nbsp;·&nbsp; Action items: .csv &nbsp;·&nbsp; Backup: .json</div>
+          <div class="types">Minutes: .docx, .txt, .md &nbsp;·&nbsp; Emails: drag straight from Outlook (.msg/.eml) &nbsp;·&nbsp; Project plan: .xlsx or Project .xml &nbsp;·&nbsp; Action items: .csv &nbsp;·&nbsp; Backup: .json</div>
         </div>
         <div class="upload-actions">
           <button class="btn sm" id="btnPasteMinutes">Paste minutes</button>
@@ -296,6 +325,8 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
         <div id="ownerTable"></div>
       </div>
     </div>
+
+    <div class="card" id="planCard" style="margin-bottom:16px"></div>
 
     <div class="card">
       <h2>Recent meetings <span class="hint">auto-summarized from uploaded minutes</span></h2>
@@ -336,6 +367,49 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
       <div id="actionTable"></div>
     </div>
   </section>
+
+  <!-- PROJECT PLAN -->
+  <section class="view" id="view-plan" hidden>
+    <div class="card" id="planEmpty">
+      <h2>Project plan</h2>
+      <div class="dropzone" id="planDrop" data-drop-type="plan" tabindex="0" role="button" aria-label="Upload project plan">
+        <strong>Drop your project plan here</strong> or click to upload
+        <div class="types">Excel (.xlsx), CSV, or Microsoft Project XML (.xml) &nbsp;·&nbsp; Microsoft Project .mpp or old .xls: in Project/Excel use File → Save As → XML or Excel Workbook (.xlsx) first</div>
+      </div>
+      <p class="muted small" style="margin:12px 0 0">The plan needs a task-name column. Start, Finish, % Complete, Resource/Owner, Outline Level or WBS columns are picked up automatically when present. <a href="#" id="planTemplate">Download a template</a> · <a href="#" id="planBlank">Start an empty plan</a></p>
+    </div>
+    <div id="planBody" hidden>
+      <div class="plan-head">
+        <div><h2 id="planTitle" style="margin:0;font-size:16px"></h2><div class="muted small" id="planSub"></div></div>
+        <div class="spacer"></div>
+        <button class="btn" id="btnPlanExport">Export plan (.csv)</button>
+        <button class="btn" id="btnPlanReplace">Upload new version</button>
+        <button class="btn danger" id="btnPlanRemove">Remove plan</button>
+      </div>
+      <div class="grid kpis" id="planKpis"></div>
+      <div class="grid two">
+        <div class="card"><h2>Approaching due date <span class="hint" id="planSoonHint"></span></h2><div id="planSoon"></div></div>
+        <div class="card"><h2 id="planGroupTitle">Completion by phase</h2><div id="planGroups"></div></div>
+      </div>
+      <div class="filters">
+        <input type="search" id="pSearch" placeholder="Search tasks or owners…">
+        <select id="pStatus" aria-label="Status filter">
+          <option value="">All tasks</option><option value="open">Not complete</option><option value="attention">Overdue or due soon</option>
+          <option value="overdue">Overdue</option><option value="soon">Due soon</option><option value="progress">In progress</option>
+          <option value="notstarted">Not started</option><option value="complete">Complete</option><option value="milestone">Milestones</option>
+        </select>
+        <select id="pOwner" aria-label="Owner filter"><option value="">All owners</option></select>
+        <label class="small muted" for="pWindow">Due soon =</label>
+        <select id="pWindow"><option value="7">within 7 days</option><option value="14">within 14 days</option><option value="30">within 30 days</option></select>
+        <span class="muted small" id="pCount"></span>
+        <div class="spacer"></div>
+        <button class="btn sm" id="pExpand">Expand all</button>
+        <button class="btn sm" id="pCollapse">Collapse all</button>
+        <button class="btn primary" id="btnPlanAdd">+ Task</button>
+      </div>
+      <div class="card" style="padding:6px 8px;overflow-x:auto"><div id="planTable"></div></div>
+    </div>
+  </section>
 </main>
 
 <!-- Meeting dialog -->
@@ -353,7 +427,7 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
       <textarea name="minutes" id="minutesText" placeholder="Paste or type minutes here…&#10;&#10;Decided to move launch to Q1.&#10;Risk: vendor contract not yet signed.&#10;Action: Send revised timeline to client — Owner: Sarah Chen — Due: 2026-11-20"></textarea>
     </div>
     <div class="field"><label>Attachments <span class="muted">— slides, PDFs, spreadsheets, images… (max 25 MB each, stored encrypted)</span></label>
-      <div class="att-drop" id="mAttDrop" data-drop-type="staged-meeting" tabindex="0" role="button">📎 Drag files here or <u>browse</u></div>
+      <div class="att-drop" id="mAttDrop" data-drop-type="staged-meeting" tabindex="0" role="button">📎 Drag files or Outlook emails here, or <u>browse</u></div>
       <div class="att-list" id="mAttList"></div>
     </div>
     <div class="detect-box" id="detectBox" hidden></div>
@@ -387,7 +461,7 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
     </div>
     <div class="field"><label>Notes</label><input name="notes" placeholder="Optional"></div>
     <div class="field"><label>Attachments <span class="muted">— max 25 MB each, stored encrypted</span></label>
-      <div class="att-drop" id="aAttDrop" data-drop-type="staged-action" tabindex="0" role="button">📎 Drag files here or <u>browse</u></div>
+      <div class="att-drop" id="aAttDrop" data-drop-type="staged-action" tabindex="0" role="button">📎 Drag files or Outlook emails here, or <u>browse</u></div>
       <div class="att-list" id="aAttList"></div>
     </div>
     <div class="dialog-actions">
@@ -432,6 +506,44 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
   </form>
 </dialog>
 
+<!-- Project plan task -->
+<dialog id="planDialog">
+  <form method="dialog" id="planForm">
+    <h2 id="planDialogTitle">Add task</h2>
+    <input type="hidden" name="idx">
+    <div class="field"><label>Task name *</label><input name="tname" required></div>
+    <div class="row3">
+      <div class="field"><label>Owner</label><input name="owner" list="ownerList"></div>
+      <div class="field"><label>Start</label><input type="date" name="start"></div>
+      <div class="field"><label>Finish / due</label><input type="date" name="finish"></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>% complete</label><input type="number" name="pct" min="0" max="100" step="5" value="0"></div>
+      <div class="field"><label>Outline level <span class="muted">(1 = phase)</span></label><input type="number" name="level" min="1" max="10" value="1"></div>
+      <div class="field"><label>Milestone</label><select name="milestone"><option value="">No</option><option value="1">Yes</option></select></div>
+    </div>
+    <div class="field"><label>Notes</label><input name="notes" placeholder="Optional"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn primary">Save task</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Email preview -->
+<dialog id="emailDialog" style="width:min(760px,94vw)">
+  <form method="dialog">
+    <h2 id="emailSubject" style="margin-bottom:8px"></h2>
+    <div id="emailMeta" class="small" style="margin-bottom:10px;line-height:1.6"></div>
+    <pre id="emailBody" style="white-space:pre-wrap;font:inherit;font-size:13px;background:var(--surface-2);padding:12px 14px;border-radius:8px;max-height:55vh;overflow:auto;margin:0"></pre>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="emailDownload">Download original</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" data-close>Close</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- Password prompt (import / change password) -->
 <dialog id="passDialog" style="width:min(440px,94vw)">
   <form method="dialog" id="passForm">
@@ -447,10 +559,11 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
 </dialog>
 
 <datalist id="ownerList"></datalist>
-<input type="file" id="fileInput" multiple accept=".txt,.md,.csv,.json,.docx" hidden>
+<input type="file" id="fileInput" multiple accept=".txt,.md,.csv,.json,.docx,.msg,.eml,.xlsx,.xlsm,.xml,.xls,.mpp" hidden>
 <input type="file" id="minutesFileInput" accept=".txt,.md,.docx" hidden>
 <input type="file" id="csvFileInput" accept=".csv" hidden>
 <input type="file" id="attFileInput" multiple hidden>
+<input type="file" id="planFileInput" accept=".xlsx,.xlsm,.csv,.xml,.xls,.mpp" hidden>
 <div class="tip" id="tip"></div>
 <div class="toast" id="toast"></div>
 
@@ -494,11 +607,12 @@ async function accountExists(u) { return localStorage.getItem(recKey(await acctI
 function accountCount() { let n = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(UPREFIX) || k.startsWith(LEGACY_UPREFIX)) n++; } return n; }
 const MIN_PASS = 8;
 const IDLE_DEFAULT = 15;   // minutes; per-account setting in state.settings.idleMins (0 = never)
-const emptyState = () => ({ project: 'Project Management Dashboard', meetings: [], actions: [], attachments: [], settings: { idleMins: IDLE_DEFAULT } });
+const emptyState = () => ({ project: 'Project Management Dashboard', meetings: [], actions: [], attachments: [], settings: { idleMins: IDLE_DEFAULT, planWindow: 14 }, plan: null });
 const validState = s => !!(s && Array.isArray(s.meetings) && Array.isArray(s.actions));
 const normState = s => {
   s.attachments = Array.isArray(s.attachments) ? s.attachments : [];
-  s.settings = Object.assign({ idleMins: IDLE_DEFAULT }, s.settings || {});
+  s.settings = Object.assign({ idleMins: IDLE_DEFAULT, planWindow: 14 }, s.settings || {});
+  s.plan = s.plan && Array.isArray(s.plan.tasks) ? s.plan : null;
   return s;
 };
 let state = emptyState();
@@ -759,6 +873,8 @@ async function handleFiles(files) {
     try {
       if (/\.json$/i.test(f.name)) await importJson(await f.text());
       else if (/\.csv$/i.test(f.name)) openCsvPreview(await f.text(), f.name);
+      else if (isEmailFile(f)) await emailToMeeting(f);
+      else if (/\.(xlsx|xlsm|xml|xls|mpp)$/i.test(f.name)) await importPlanFile(f);
       else if (/\.(txt|md|docx)$/i.test(f.name)) {
         const text = await readText(f);
         openMeetingDialog(null, { title: guessTitle(f.name, text), date: guessDate(f.name, text), attendees: guessAttendees(text), minutes: text });
@@ -855,9 +971,10 @@ async function importJson(text) {
   if (replace) {
     const keep = new Set(incoming.map(a => a.id));
     for (const a of state.attachments) if (!keep.has(a.id)) await delFile(a.id).catch(() => {});
-    state = { project: d.project || state.project, meetings: d.meetings, actions: d.actions, attachments: [] };
+    state = { project: d.project || state.project, meetings: d.meetings, actions: d.actions, attachments: [], settings: state.settings, plan: d.plan || null };
   } else {
     const ids = new Set([...state.meetings, ...state.actions, ...state.attachments].map(x => x.id));
+    if (!state.plan && d.plan) state.plan = d.plan;
     state.meetings.push(...d.meetings.filter(m => !ids.has(m.id)));
     state.actions.push(...d.actions.filter(a => !ids.has(a.id)));
     incoming = incoming.filter(a => !ids.has(a.id));
@@ -996,7 +1113,9 @@ const dz = document.getElementById('dropzone');
 dz.addEventListener('click', () => fileInput.click());
 dz.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
 // Drop routing: onto a meeting card / action row / dialog attachment zone → attach; elsewhere on the dashboard → import.
-let dragEl = null;
+let dragEl = null, internalDrag = false;
+document.addEventListener('dragstart', () => { internalDrag = true; });
+document.addEventListener('dragend', () => { internalDrag = false; });
 const dropHost = e => (e.target && e.target.closest) ? e.target.closest('[data-drop-type]') : null;
 function setDrag(el) { if (el === dragEl) return; if (dragEl) dragEl.classList.remove('drop-over'); dragEl = el; if (el) el.classList.add('drop-over'); }
 ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => {
@@ -1010,9 +1129,22 @@ document.addEventListener('drop', e => {
   e.preventDefault();
   const host = dropHost(e); setDrag(null); dz.classList.remove('over');
   if (!cryptoKey) return;
-  const files = [...e.dataTransfer.files]; if (!files.length) return;
+  let files = [...e.dataTransfer.files];
+  if (!files.length) {
+    if (internalDrag) return;
+    const tf = textDropToFile(e.dataTransfer);
+    if (!tf) return;
+    if (!host && currentView === 'dashboard' && !document.querySelector('dialog[open]')) {
+      tf.text().then(t => openMeetingDialog(null, { title: 'Email notes', date: toISO(today()), attendees: '', minutes: /html/.test(tf.type) ? htmlToText(t) : t }));
+      toast('Outlook only sent the email text, so it was added as meeting notes. For the full email, use classic Outlook, or save the email and drop the file.');
+      return;
+    }
+    files = [tf];
+    toast('Outlook only sent the email text — it was saved as a text attachment');
+  }
   if (host) {
     const t = host.dataset.dropType;
+    if (t === 'plan') { importPlanFile(files[0]); return; }
     if (t.startsWith('staged-')) stageFiles(t.slice(7), files); else addAttachments(files, t, host.dataset.dropId);
     return;
   }
@@ -1051,7 +1183,7 @@ document.getElementById('btnSample').addEventListener('click', () => {
 document.getElementById('btnClear').addEventListener('click', () => {
   if (!confirm('Delete ALL meetings and action items? Consider exporting a backup first.')) return;
   delUserFiles(currentId).catch(() => {});
-  state.meetings = []; state.actions = []; state.attachments = []; document.getElementById('moreDialog').close(); save(); toast('All data cleared');
+  state.meetings = []; state.actions = []; state.attachments = []; state.plan = null; document.getElementById('moreDialog').close(); save(); toast('All data cleared');
 });
 const renameProject = () => { const n = prompt('Project name', state.project); if (n && n.trim()) { state.project = n.trim(); save(); } };
 document.getElementById('btnRename').addEventListener('click', () => { document.getElementById('moreDialog').close(); renameProject(); });
@@ -1085,7 +1217,7 @@ function render() {
   document.title = state.project;
   document.getElementById('todayLabel').textContent = 'Today: ' + today().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) + ' · ' + plural(state.meetings.length, 'meeting') + ' · ' + plural(state.actions.length, 'action item');
   document.getElementById('ownerList').innerHTML = owners().map(o => `<option value="${esc(o)}">`).join('');
-  renderDashboard(); renderMeetings(); renderActionFilters(); renderActions();
+  renderDashboard(); renderPlanCard(); renderMeetings(); renderActionFilters(); renderActions(); renderPlan();
 }
 
 function stats() {
@@ -1104,8 +1236,8 @@ function renderDashboard() {
   const s = stats();
   // summary narrative
   const el = document.getElementById('summaryText');
-  if (!state.meetings.length && !state.actions.length) {
-    el.innerHTML = 'No data yet. Upload meeting minutes (.docx, .txt) or an action-item spreadsheet (.csv), or add items directly with the buttons above. Want to see how it works? <a href="#" id="lnkSample">Load sample data</a>.';
+  if (!state.meetings.length && !state.actions.length && !(state.plan && state.plan.tasks.length)) {
+    el.innerHTML = 'No data yet. Upload meeting minutes (.docx, .txt), Outlook emails, a project plan (.xlsx or Project .xml) or an action-item spreadsheet (.csv), or add items directly with the buttons above. Want to see how it works? <a href="#" id="lnkSample">Load sample data</a>.';
     document.getElementById('lnkSample').onclick = e => { e.preventDefault(); loadSample(); toast('Sample data loaded'); };
   } else {
     const ms = [...state.meetings].sort((a,b) => a.date.localeCompare(b.date));
@@ -1127,6 +1259,7 @@ function renderDashboard() {
     const allDec = state.meetings.reduce((n, m) => n + summarizeMinutes(m.minutes).decisions.length, 0);
     const allRisk = state.meetings.reduce((n, m) => n + summarizeMinutes(m.minutes).risks.length, 0);
     if (allDec || allRisk) parts.push(` Minutes record ${plural(allDec, 'decision')} and ${plural(allRisk, 'risk/issue', 'risks/issues')}.`);
+    if (state.plan && state.plan.tasks.length) { const ps = planStats(planRows()); parts.push(` The project plan is <b>${ps.overall}% complete</b> (${ps.complete.length} of ${plural(ps.leaves.length, 'task')} done)${ps.overdue.length ? `, <span class="overdue-text">${plural(ps.overdue.length, 'task')} overdue</span>` : ''}${ps.soon.length ? `, ${ps.soon.length} due within ${planWin()} days` : ''}.`); }
     if (state.attachments.length) parts.push(` ${plural(state.attachments.length, 'file is', 'files are')} attached (${fmtSize(state.attachments.reduce((n, a) => n + a.size, 0))}, encrypted).`);
     el.innerHTML = parts.join('');
   }
@@ -1215,7 +1348,7 @@ function meetingCard(m, compact) {
     <div class="sec-label">Action items · ${acts.length ? `${open} open of ${acts.length}` : 'none'}</div>
     ${acts.length ? `<ul>${acts.slice(0, compact ? 4 : 100).map(a => `<li>${a.status === 'Done' ? '<s class="muted">' + esc(a.text) + '</s>' : esc(a.text)} <span class="muted">— ${esc(a.owner)}${a.due ? ', ' : ''}</span>${a.due ? relDue(a.due, true) : ''}${isOverdue(a) ? ' <span class="overdue-text small">(overdue)</span>' : ''}</li>`).join('')}${compact && acts.length > 4 ? `<li class="muted">+${acts.length - 4} more</li>` : ''}</ul>` : ''}
     ${compact ? (atts.length ? `<div class="sec-label">Attachments · ${atts.length}</div><div class="att-list">${attChips(atts.slice(0, 3), { noDelete: true })}${atts.length > 3 ? `<span class="muted small">+${atts.length - 3} more</span>` : ''}</div>` : '')
-      : `<div class="sec-label">Attachments${atts.length ? ' · ' + atts.length : ''}</div><div class="att-list">${attChips(atts)}</div><div class="att-drop sm" tabindex="0" role="button">📎 Drop files on this meeting or <u>browse</u></div>`}
+      : `<div class="sec-label">Attachments${atts.length ? ' · ' + atts.length : ''}</div><div class="att-list">${attChips(atts)}</div><div class="att-drop sm" tabindex="0" role="button">📎 Drop files or Outlook emails on this meeting, or <u>browse</u></div>`}
     ${!compact && m.minutes ? `<details class="minutes"><summary>Full minutes</summary><pre>${esc(m.minutes)}</pre></details>` : ''}
   </div>`;
 }
@@ -1435,14 +1568,540 @@ Action: Schedule lessons-learned session after pilot` };
   set('Prepare UAT scripts', { status: 'In Progress', priority: 'High' });
   set('Confirm vendor availability', { priority: 'High' });
   set('Update RAID log', { status: 'In Progress' });
+  if (!state.plan) {
+    const T = (level, name, owner, st, fi, pct, ms) => ({ id: uid(), wbs: '', name, level, start: d(st), finish: d(fi), pct, owner, milestone: !!ms, notes: '' });
+    state.plan = { name: 'Sample project plan', source: '', importedAt: Date.now(), tasks: [
+      T(1, 'Initiation', '', -40, -20, 0), T(2, 'Project charter approved', 'Sarah Chen', -40, -30, 100), T(2, 'Stakeholder analysis', 'Maria Lopez', -35, -22, 100), T(2, 'Kickoff complete', 'Sarah Chen', -20, -20, 100, 1),
+      T(1, 'Pilot preparation', '', -20, 12, 0), T(2, 'Data migration dry run', 'Raj Patel', -18, -3, 80), T(2, 'UAT scripts', 'Raj Patel', -10, 3, 60), T(2, 'Training materials', 'Maria Lopez', -5, 9, 30),
+      T(2, 'Environment stabilisation', 'Priya Nair', -14, -2, 50), T(2, 'Pilot go / no-go decision', 'Sarah Chen', 12, 12, 0, 1),
+      T(1, 'Pilot', '', 13, 40, 0), T(2, 'Pilot go-live — North', 'James O’Neill', 13, 13, 0, 1), T(2, 'Hypercare', 'Priya Nair', 13, 27, 0), T(2, 'Lessons learned', 'Sarah Chen', 33, 40, 0)] };
+  }
   state.actions.push({ id: uid(), text: 'Finalize pilot user list', owner: 'Raj Patel', due: d(20), status: 'Open', priority: 'Low', meetingId: '', notes: 'Added directly on dashboard', createdAt: Date.now() });
   save();
 }
 
 
+
+
+/* ---------------- project plan ---------------- */
+const gid = id => document.getElementById(id);
+const PLAN_STATUS = { complete: ['Complete', 'var(--good)', '✓'], overdue: ['Overdue', 'var(--critical)', '⚠'], soon: ['Due soon', 'var(--warning)', '⏰'], progress: ['In progress', 'var(--series-1)', ''], notstarted: ['Not started', 'var(--axis)', ''] };
+const clampPct = v => Math.max(0, Math.min(100, Math.round(+v || 0)));
+const planWin = () => (state.settings && state.settings.planWindow) || 14;
+const planCollapsed = new Set();
+
+/* ---- import: Excel (.xlsx), CSV, Microsoft Project XML ---- */
+async function unzip(buf) {
+  const dv = new DataView(buf), u8 = new Uint8Array(buf);
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 66000); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('not a valid Excel (.xlsx) file');
+  const count = dv.getUint16(eocd + 10, true), dec = new TextDecoder(), files = {};
+  let q = dv.getUint32(eocd + 16, true);
+  for (let n = 0; n < count; n++) {
+    if (dv.getUint32(q, true) !== 0x02014b50) break;
+    const nlen = dv.getUint16(q + 28, true);
+    files[dec.decode(u8.subarray(q + 46, q + 46 + nlen))] = { method: dv.getUint16(q + 10, true), csize: dv.getUint32(q + 20, true), loff: dv.getUint32(q + 42, true) };
+    q += 46 + nlen + dv.getUint16(q + 30, true) + dv.getUint16(q + 32, true);
+  }
+  const read = async name => {
+    const f = files[name]; if (!f) return null;
+    const start = f.loff + 30 + dv.getUint16(f.loff + 26, true) + dv.getUint16(f.loff + 28, true);
+    const data = u8.slice(start, start + f.csize);
+    return f.method === 0 ? dec.decode(data) : new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+  };
+  return { names: Object.keys(files), read };
+}
+const colIdx = l => { let n = 0; for (const ch of l.toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; };
+async function parseXlsx(buf) {
+  const z = await unzip(buf);
+  const X = t => new DOMParser().parseFromString(t || '<x/>', 'application/xml');
+  const tags = (el, n) => [...el.getElementsByTagNameNS('*', n)];
+  const ss = [];
+  const sst = await z.read('xl/sharedStrings.xml');
+  if (sst) tags(X(sst), 'si').forEach(si => ss.push([...si.childNodes].filter(c => c.localName === 't' || c.localName === 'r').map(c => c.localName === 't' ? c.textContent : tags(c, 't').map(t => t.textContent).join('')).join('')));
+  const indents = [];   // cell style index → indent level (Excel's "Increase indent")
+  const sty = await z.read('xl/styles.xml');
+  if (sty) { const xfs = tags(X(sty), 'cellXfs')[0]; if (xfs) [...xfs.children].forEach((xf, i) => { const al = tags(xf, 'alignment')[0]; indents[i] = al ? +(al.getAttribute('indent') || 0) : 0; }); }
+  const wb = X(await z.read('xl/workbook.xml')), rels = X(await z.read('xl/_rels/workbook.xml.rels')), relMap = {};
+  tags(rels, 'Relationship').forEach(r => { relMap[r.getAttribute('Id')] = r.getAttribute('Target'); });
+  const sheets = tags(wb, 'sheet').map(sh => {
+    const rid = sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id') || sh.getAttribute('r:id');
+    let t = (relMap[rid] || '').replace(/^\//, ''); if (t && !t.startsWith('xl/')) t = 'xl/' + t;
+    return { name: sh.getAttribute('name'), path: t };
+  });
+  const out = [];
+  for (const sh of sheets) {
+    const xml = await z.read(sh.path); if (!xml) continue;
+    const rows = [], ind = [];
+    tags(X(xml), 'row').forEach(r => {
+      const vals = [], ins = [];
+      tags(r, 'c').forEach(c => {
+        const col = colIdx((c.getAttribute('r') || '').replace(/\d+/g, '')), t = c.getAttribute('t'), v = tags(c, 'v')[0];
+        let val = '';
+        if (t === 's') val = ss[+(v && v.textContent)] ?? '';
+        else if (t === 'inlineStr') val = tags(c, 't').map(x => x.textContent).join('');
+        else if (t === 'str' || t === 'e') val = v ? v.textContent : '';
+        else if (t === 'b') val = v && v.textContent === '1' ? 'TRUE' : 'FALSE';
+        else val = v && v.textContent !== '' ? +v.textContent : '';
+        const k = col >= 0 ? col : vals.length; vals[k] = val; ins[k] = indents[+(c.getAttribute('s') || 0)] || 0;
+      });
+      const ri = (+r.getAttribute('r') || rows.length + 1) - 1; rows[ri] = vals; ind[ri] = ins;
+    });
+    out.push({ name: sh.name, rows: [...rows].map(r => r || []), indents: [...ind].map(r => r || []) });
+  }
+  return out;
+}
+function planDate(v) {
+  if (v == null || v === '') return '';
+  if (typeof v === 'number') { if (v > 20000 && v < 80000) { const d = new Date(Math.round((v - 25569) * MS_DAY)); return toISO(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); } return ''; }
+  let str = String(v).trim();
+  if (/^\d{5}(\.\d+)?$/.test(str)) return planDate(+str);
+  if (/^(n\/?a|tbd|tbc|-|—)$/i.test(str)) return '';
+  str = str.replace(/^(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?,?\s+(?=\d|[a-z]{3})/i, '').replace(/T\d.*$/, '').replace(/\s+\d{1,2}:\d{2}(:\d{2})?\s*(am|pm)?$/i, '');
+  return normalizeDate(str);
+}
+const PLAN_COLS = {
+  pct: [[/^%\s*complete$|percent complete|%\s*done|^progress$|^% ?complete$/i], [/complete|%|progress/i]],
+  start: [[/^(start|start date|planned start|begin|begin date)$/i], [/start|begin/i]],
+  finish: [[/^(finish|finish date|end|end date|due|due date|deadline|planned finish|target date)$/i], [/finish|end date|due|deadline|target/i]],
+  owner: [[/^(resource names?|owner|assigned to|assignee|responsible|lead|resource)$/i], [/resource|owner|assign|responsible|who/i]],
+  level: [[/^(outline level|level|indent)$/i]],
+  wbs: [[/^(wbs|wbs code|outline number)$/i], [/^(id|task id|#|no\.?|number|ref)$/i]],
+  milestone: [[/milestone/i]],
+  duration: [[/^duration$/i], [/duration/i]],
+  status: [[/^status$/i]],
+  notes: [[/^(notes?|comments?)$/i]],
+  name: [[/^(task name|name|task|tasks|activity|activity name|task description|deliverable|work item|title|item|description|milestone \/ task)$/i], [/task|activity|name|description|deliverable/i]],
+};
+function mapPlanColumns(hdr) {
+  const used = new Set(), col = {};
+  const order = ['level', 'wbs', 'pct', 'start', 'finish', 'owner', 'duration', 'status', 'notes', 'milestone', 'name'];
+  for (const k of order) {
+    for (const tier of PLAN_COLS[k]) {
+      const i = hdr.findIndex((h, j) => !used.has(j) && h && tier.some(re => re.test(h)) && !/baseline|actual|remaining|variance|slack/i.test(h) && !(k === 'name' && /resource|owner|assign/i.test(h)) && !(k === 'pct' && /date|finish/i.test(h)));
+      if (i >= 0) { col[k] = i; used.add(i); break; }
+    }
+  }
+  return col;
+}
+function rowsToTasks(rows, indents) {
+  let hi = -1, col = null;
+  for (let r = 0; r < Math.min(rows.length, 25); r++) {
+    const hdr = (rows[r] || []).map(v => typeof v === 'string' ? v.trim() : '');
+    const c = mapPlanColumns(hdr);
+    if (c.name != null && (c.start != null || c.finish != null || c.pct != null || c.owner != null)) { hi = r; col = c; break; }
+    if (c.name != null && hi < 0) { hi = r; col = c; }
+  }
+  if (hi < 0) return { tasks: [], col: null };
+  const get = (row, k) => col[k] != null ? row[col[k]] : '';
+  const body = rows.slice(hi + 1).map((row, j) => ({ row: row || [], ind: (indents && indents[hi + 1 + j]) || [] })).filter(x => String(get(x.row, 'name') ?? '').trim());
+  const pRaw = body.map(x => { const v = get(x.row, 'pct'); return typeof v === 'number' ? v : parseFloat(String(v ?? '').replace('%', '')); }).filter(v => !isNaN(v));
+  const scale = pRaw.length && Math.max(...pRaw) <= 1 && pRaw.some(v => v > 0) ? 100 : 1;
+  let tasks = body.map(({ row, ind }) => {
+    const rawName = String(get(row, 'name'));
+    const name = rawName.trim();
+    const wbs = String(get(row, 'wbs') ?? '').trim();
+    let level = parseInt(get(row, 'level'), 10);
+    if (isNaN(level)) {
+      if (/^\d+(\.\d+)*$/.test(wbs)) level = wbs.split('.').length;
+      else if (col.name != null && ind[col.name]) level = 1 + ind[col.name];
+      else { const sp = rawName.match(/^\s*/)[0].replace(/\t/g, '    ').length; level = 1 + Math.floor(sp / 2); }
+    }
+    let pv = get(row, 'pct'), pct = typeof pv === 'number' ? pv * scale : parseFloat(String(pv ?? '').replace('%', '')) * (String(pv).includes('%') ? 1 : scale);
+    if (isNaN(pct)) { const st = String(get(row, 'status') ?? ''); pct = /complete|done|closed/i.test(st) ? 100 : /progress|started|on track|at risk/i.test(st) ? 50 : 0; }
+    const dur = String(get(row, 'duration') ?? '');
+    const ms = /^(y|yes|true|1|x)$/i.test(String(get(row, 'milestone') ?? '').trim()) || /^0(\.0+)?\s*(d|days?|h|hrs?|hours?|w|wks?|weeks?|e?days?)?\??$/i.test(dur.trim());
+    const owner = String(get(row, 'owner') ?? '').replace(/\[[^\]]*\]/g, '').replace(/\s*,\s*/g, ', ').trim();
+    return { id: uid(), wbs, name, level, start: planDate(get(row, 'start')), finish: planDate(get(row, 'finish')), pct: clampPct(pct), owner, milestone: ms, notes: String(get(row, 'notes') ?? '').trim() };
+  });
+  const minL = Math.min(...tasks.map(t => t.level));
+  if (minL < 1 || minL > 1) tasks.forEach(t => { t.level = t.level - minL + 1; });
+  return { tasks, col };
+}
+function parseProjectXml(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  const root = doc.documentElement;
+  if (!root || root.localName !== 'Project' || doc.getElementsByTagName('parsererror').length) throw new Error('this XML file is not a Microsoft Project XML export');
+  const kids = (el, n) => el ? [...el.children].filter(c => c.localName === n) : [];
+  const kid = (el, n) => { const c = kids(el, n)[0]; return c ? c.textContent.trim() : ''; };
+  const block = n => kids(root, n)[0];
+  const res = {}; kids(block('Resources'), 'Resource').forEach(r => { res[kid(r, 'UID')] = kid(r, 'Name'); });
+  const asg = {}; kids(block('Assignments'), 'Assignment').forEach(a => { const n = res[kid(a, 'ResourceUID')]; if (n) (asg[kid(a, 'TaskUID')] ||= []).push(n); });
+  const tasks = kids(block('Tasks'), 'Task').filter(t => kid(t, 'UID') !== '0' && kid(t, 'OutlineLevel') !== '0' && kid(t, 'IsNull') !== '1' && kid(t, 'Active') !== '0' && kid(t, 'Name')).map(t => ({
+    id: uid(), wbs: kid(t, 'WBS') || kid(t, 'OutlineNumber'), name: kid(t, 'Name'), level: Math.max(1, parseInt(kid(t, 'OutlineLevel'), 10) || 1),
+    start: planDate(kid(t, 'Start')), finish: planDate(kid(t, 'Finish')), pct: clampPct(kid(t, 'PercentComplete')),
+    owner: (asg[kid(t, 'UID')] || []).join(', '), milestone: kid(t, 'Milestone') === '1', notes: kid(t, 'Notes')
+  }));
+  return { tasks, title: kid(root, 'Title') || kid(root, 'Name') };
+}
+async function importPlanFile(file) {
+  if (!file || !cryptoKey) return;
+  try {
+    const buf = await file.arrayBuffer(), head = new Uint8Array(buf, 0, Math.min(8, buf.byteLength));
+    const isOle = head[0] === 0xD0 && head[1] === 0xCF;
+    let tasks = [], title = '';
+    if (/\.mpp$/i.test(file.name)) throw new Error('Microsoft Project .mpp files can’t be read in a browser. In Project choose File → Save As → XML (*.xml) or Excel Workbook (*.xlsx), then upload that file');
+    if (/\.xls$/i.test(file.name) && isOle) throw new Error('old-format .xls workbooks can’t be read in a browser. In Excel choose File → Save As → Excel Workbook (*.xlsx), then upload that file');
+    if (/\.xml$/i.test(file.name)) ({ tasks, title } = parseProjectXml(new TextDecoder().decode(buf)));
+    else if (/\.csv$/i.test(file.name) || /\.txt$/i.test(file.name)) tasks = rowsToTasks(parseCSV(new TextDecoder().decode(buf))).tasks;
+    else if (/\.(xlsx|xlsm)$/i.test(file.name) || (head[0] === 0x50 && head[1] === 0x4B)) {
+      let best = [];
+      for (const sh of await parseXlsx(buf)) { const r = rowsToTasks(sh.rows, sh.indents); if (r.tasks.length > best.length) { best = r.tasks; title = title || sh.name; } }
+      tasks = best;
+    } else throw new Error('unsupported file type — use .xlsx, .csv or Microsoft Project .xml');
+    if (!tasks.length) throw new Error('no tasks found. The sheet needs a header row with a task-name column (e.g. “Task Name”), plus optional Start, Finish, % Complete and Owner columns');
+    if (state.plan && state.plan.tasks.length && !confirm(`Replace the current project plan (${plural(state.plan.tasks.length, 'task')}) with “${file.name}” (${plural(tasks.length, 'task')})?\n\n% complete values entered on the dashboard are kept for tasks with the same name.`)) return;
+    if (state.plan) { const old = new Map(state.plan.tasks.map(t => [t.name.toLowerCase(), t.pct])); tasks.forEach(t => { const o = old.get(t.name.toLowerCase()); if (o != null && o > t.pct) t.pct = o; }); }
+    state.plan = { name: file.name.replace(/\.[^.]+$/, ''), source: file.name, importedAt: Date.now(), tasks };
+    planCollapsed.clear(); save(); showView('plan');
+    const dated = tasks.filter(t => t.finish).length;
+    toast(`Project plan loaded: ${plural(tasks.length, 'task')}` + (dated < tasks.length ? ` · ${tasks.length - dated} without a finish date` : ''));
+  } catch (e) { console.error(e); toast('Could not load the project plan: ' + e.message); }
+}
+
+/* ---- derived plan data ---- */
+function planRows() {
+  const T = (state.plan && state.plan.tasks) || [];
+  const rows = T.map((t, i) => ({ t, i, level: Math.max(1, t.level || 1) }));
+  rows.forEach((r, i) => { r.summary = i + 1 < rows.length && rows[i + 1].level > r.level; });
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const r = rows[i];
+    if (!r.summary) {
+      r.start = r.t.start || r.t.finish; r.finish = r.t.finish || r.t.start; r.pct = clampPct(r.t.pct);
+      r.weight = r.start && r.finish ? Math.max(1, Math.round((parseISO(r.finish) - parseISO(r.start)) / MS_DAY) + 1) : 1;
+      r.end = i + 1; continue;
+    }
+    let j = i + 1, ws = 0, wp = 0, st = '', fi = '';
+    while (j < rows.length && rows[j].level > r.level) {
+      const c = rows[j];
+      if (!c.summary) { ws += c.weight; wp += c.weight * c.pct; }
+      if (c.start && (!st || c.start < st)) st = c.start;
+      if (c.finish && (!fi || c.finish > fi)) fi = c.finish;
+      j++;
+    }
+    r.start = st || r.t.start; r.finish = fi || r.t.finish; r.pct = ws ? Math.round(wp / ws) : clampPct(r.t.pct); r.weight = ws || 1; r.end = j;
+  }
+  const td = toISO(today()), win = toISO(addDays(today(), planWin()));
+  rows.forEach(r => {
+    r.milestone = !!r.t.milestone;
+    r.status = r.pct >= 100 ? 'complete' : (r.finish && r.finish < td) ? 'overdue' : (r.finish && r.finish <= win) ? 'soon' : (r.pct > 0 || (r.start && r.start <= td)) ? 'progress' : 'notstarted';
+  });
+  return rows;
+}
+function planStats(rows) {
+  const leaves = rows.filter(r => !r.summary), w = leaves.reduce((n, r) => n + r.weight, 0);
+  const by = k => leaves.filter(r => r.status === k), td = toISO(today());
+  return {
+    leaves, overall: w ? Math.round(leaves.reduce((n, r) => n + r.weight * r.pct, 0) / w) : 0,
+    complete: by('complete'), overdue: by('overdue'), soon: by('soon'), progress: by('progress'), notstarted: by('notstarted'),
+    nextMs: rows.filter(r => r.milestone && r.pct < 100 && r.finish && r.finish >= td).sort((a, b) => a.finish.localeCompare(b.finish))[0]
+  };
+}
+const pctBar = (p, color) => `<span class="pbar" role="img" aria-label="${p}% complete"><span style="width:${p}%;${color ? 'background:' + color : ''}"></span></span>`;
+function planPill(r) { const [label, color, icon] = PLAN_STATUS[r.status]; return `<span class="pill"><span class="dot" style="background:${color}"></span>${icon ? icon + ' ' : ''}${label}</span>`; }
+const planFill = r => r.status === 'complete' ? 'var(--good)' : r.status === 'overdue' ? 'var(--critical)' : r.status === 'soon' ? 'var(--warning)' : 'var(--series-1)';
+function planRange(rows) {
+  const ds = rows.flatMap(r => [r.start, r.finish]).filter(Boolean).sort();
+  if (!ds.length) return null;
+  const min = parseISO(ds[0]), max = parseISO(ds[ds.length - 1]), span = (max - min) + MS_DAY, t = today();
+  return { min, max, span, todayPos: t >= min && t <= max ? ((t - min) / span) * 100 : null };
+}
+function ganttCell(r, R) {
+  if (!R || (!r.start && !r.finish)) return '';
+  const s = parseISO(r.start || r.finish), f = parseISO(r.finish || r.start);
+  const L = ((s - R.min) / R.span) * 100, W = Math.max(0.8, (((f - s) + MS_DAY) / R.span) * 100);
+  const tip = esc(`<b>${esc(r.t.name)}</b><br>${fmtDate(r.start)} – ${fmtDate(r.finish)}<br>${r.pct}% complete · ${PLAN_STATUS[r.status][0]}${r.t.owner ? '<br>' + esc(r.t.owner) : ''}`);
+  const mark = r.milestone && !r.summary && r.start === r.finish
+    ? `<span class="gantt-ms" style="left:${L + W / 2}%;background:${planFill(r)}"></span>`
+    : `<span class="gantt-bar ${r.summary ? 'sum' : ''}" style="left:${L}%;width:${Math.min(W, 100 - L)}%"><span style="width:${r.pct}%;background:${r.summary ? 'var(--text-secondary)' : planFill(r)}"></span></span>`;
+  return `<div class="gantt" data-tip="${tip}">${R.todayPos != null ? `<i class="gantt-today" style="left:${R.todayPos}%"></i>` : ''}${mark}</div>`;
+}
+function hbars(items) {
+  return items.map(x => `<div class="hbar-row" data-tip="${esc(`<b>${esc(x.label)}</b><br>${x.pct}% complete · ${plural(x.n, 'task')}`)}"><span class="lbl" title="${esc(x.label)}">${esc(x.label)}</span><span class="hbar-track"><span style="width:${x.pct}%"></span></span><span class="val">${x.pct}% · ${x.n}</span></div>`).join('');
+}
+
+/* ---- rendering ---- */
+function renderPlan() {
+  const has = !!(state.plan && state.plan.tasks);
+  gid('planEmpty').hidden = has; gid('planBody').hidden = !has;
+  if (!has) return;
+  const rows = planRows(), st = planStats(rows), win = planWin();
+  gid('planTitle').textContent = state.plan.name || 'Project plan';
+  gid('planSub').textContent = (state.plan.source ? `From ${state.plan.source} · imported ${new Date(state.plan.importedAt).toLocaleDateString()} · ` : '') + plural(st.leaves.length, 'task') + (rows.length > st.leaves.length ? ` in ${plural(rows.length - st.leaves.length, 'group')}` : '');
+  gid('pWindow').value = String(win);
+  const kpi = (label, value, foot, extra = '', icon = '') => `<div class="card kpi"><div class="label">${icon}${label}</div><div class="value">${value}</div>${extra}<div class="foot">${foot}</div></div>`;
+  const dot = c => `<span class="dot" style="background:${c}"></span>`;
+  gid('planKpis').innerHTML =
+    kpi('Overall complete', st.overall + '%', 'Weighted by task duration', `<div class="meter"><span style="width:${st.overall}%"></span></div>`) +
+    kpi('Tasks complete', `${st.complete.length}<span class="muted" style="font-size:16px"> / ${st.leaves.length}</span>`, `${st.progress.length} in progress · ${st.notstarted.length} not started`, '', dot('var(--good)')) +
+    kpi(`Due in ${win} days`, st.soon.length, st.soon.length ? 'Not yet complete' : 'Nothing due soon', '', dot('var(--warning)')) +
+    kpi('Overdue', st.overdue.length, st.overdue.length ? 'Past finish date, not complete' : 'All on track', '', dot('var(--critical)')) +
+    kpi('Next milestone', st.nextMs ? `<span style="font-size:17px">${esc(st.nextMs.t.name)}</span>` : '—', st.nextMs ? relDue(st.nextMs.finish) : 'No upcoming milestones');
+  // approaching
+  gid('planSoonHint').textContent = `overdue and due within ${win} days`;
+  const att = [...st.overdue, ...st.soon].sort((a, b) => a.finish.localeCompare(b.finish));
+  gid('planSoon').innerHTML = att.length ? `<table><thead><tr><th>Task</th><th>Owner</th><th>Finish</th><th>Progress</th><th></th></tr></thead><tbody>${att.slice(0, 12).map(r => `<tr><td>${r.milestone ? '◆ ' : ''}${esc(r.t.name)}</td><td>${esc(r.t.owner || '—')}</td><td style="white-space:nowrap">${relDue(r.finish)}</td><td class="pct-cell">${pctBar(r.pct, planFill(r))} <span class="small">${r.pct}%</span></td><td><button class="btn sm" data-plan-done="${r.i}" title="Mark 100% complete">✓ Done</button></td></tr>`).join('')}</tbody></table>${att.length > 12 ? `<p class="small muted">+${att.length - 12} more — use the “Overdue or due soon” filter below</p>` : ''}`
+    : `<div class="empty">Nothing overdue or due within ${win} days 🎉</div>`;
+  // groups
+  const minL = Math.min(...rows.map(r => r.level));
+  const phases = rows.filter(r => r.level === minL && r.summary);
+  let groups, title;
+  if (phases.length) { title = 'Completion by phase'; groups = phases.map(r => ({ label: r.t.name, pct: r.pct, n: rows.slice(r.i + 1, r.end).filter(x => !x.summary).length })); }
+  else {
+    title = 'Completion by owner'; const m = {};
+    st.leaves.forEach(r => { const k = r.t.owner || 'Unassigned'; (m[k] ||= { w: 0, p: 0, n: 0 }); m[k].w += r.weight; m[k].p += r.weight * r.pct; m[k].n++; });
+    groups = Object.entries(m).map(([label, v]) => ({ label, pct: Math.round(v.p / v.w), n: v.n })).sort((a, b) => b.n - a.n);
+  }
+  gid('planGroupTitle').textContent = title;
+  gid('planGroups').innerHTML = groups.length ? hbars(groups.slice(0, 10)) + (groups.length > 10 ? `<p class="small muted">+${groups.length - 10} more</p>` : '') : '<div class="empty">No groups</div>';
+  // filters
+  const ownersP = [...new Set(st.leaves.flatMap(r => (r.t.owner || '').split(/,\s*/)).filter(Boolean))].sort();
+  const po = gid('pOwner'), pov = po.value;
+  po.innerHTML = '<option value="">All owners</option>' + ownersP.map(o => `<option>${esc(o)}</option>`).join('');
+  po.value = ownersP.includes(pov) ? pov : '';
+  const q = gid('pSearch').value.trim().toLowerCase(), fs = gid('pStatus').value, fo = po.value;
+  const filtering = !!(q || fs || fo);
+  const match = r => (!q || (r.t.name + ' ' + (r.t.owner || '')).toLowerCase().includes(q)) && (!fo || (r.t.owner || '').split(/,\s*/).includes(fo)) &&
+    (!fs || (fs === 'open' ? r.status !== 'complete' : fs === 'attention' ? (r.status === 'overdue' || r.status === 'soon') : fs === 'milestone' ? r.milestone : r.status === fs));
+  let shown = [];
+  if (filtering) shown = rows.filter(r => !r.summary && match(r));
+  else { let hide = Infinity; for (const r of rows) { if (r.level > hide) continue; hide = Infinity; shown.push(r); if (r.summary && planCollapsed.has(r.t.id)) hide = r.level; } }
+  gid('pCount').textContent = filtering ? `${shown.length} of ${st.leaves.length} tasks` : '';
+  const R = planRange(rows);
+  const axis = R ? `<div class="gantt-axis"><span>${fmtDate(toISO(R.min))}</span>${R.todayPos != null ? '<span style="color:var(--critical)">┆ today</span>' : ''}<span>${fmtDate(toISO(R.max))}</span></div>` : 'Timeline';
+  gid('planTable').innerHTML = rows.length ? `<table><thead><tr><th>Task</th><th>Owner</th><th>Start</th><th>Finish</th><th>% complete</th><th>Status</th><th class="gantt-cell">${axis}</th><th></th></tr></thead><tbody>
+    ${shown.map(r => `<tr class="${r.summary ? 'plan-sum' : ''} ${r.status === 'complete' && !r.summary ? 'done-row' : ''}">
+      <td><div class="plan-name" style="padding-left:${filtering ? 0 : (r.level - 1) * 18}px">${r.summary && !filtering ? `<button class="caret" data-plan-toggle="${esc(r.t.id)}" aria-label="${planCollapsed.has(r.t.id) ? 'Expand' : 'Collapse'} ${esc(r.t.name)}">${planCollapsed.has(r.t.id) ? '▶' : '▼'}</button>` : '<span class="caret-sp"></span>'}${r.milestone ? '<span class="ms" title="Milestone">◆</span>' : ''}<span class="act-text">${esc(r.t.name)}</span></div>${r.t.wbs ? `<div class="muted small" style="padding-left:${filtering ? 22 : (r.level - 1) * 18 + 22}px">${esc(r.t.wbs)}</div>` : ''}</td>
+      <td class="small">${esc(r.t.owner || '')}</td>
+      <td style="white-space:nowrap">${r.start ? fmtDate(r.start) : '<span class="muted">—</span>'}</td>
+      <td style="white-space:nowrap">${r.finish ? (r.status === 'complete' || r.summary ? fmtDate(r.finish) : relDue(r.finish, true)) : '<span class="muted">—</span>'}</td>
+      <td class="pct-cell">${pctBar(r.pct, r.summary ? 'var(--text-secondary)' : planFill(r))}${r.summary ? `<span class="pct-num">${r.pct}%</span>` : `<input type="number" class="pct-input" min="0" max="100" step="5" value="${r.pct}" data-plan-pct="${r.i}" aria-label="% complete for ${esc(r.t.name)}">`}</td>
+      <td>${r.summary ? '' : planPill(r)}</td>
+      <td class="gantt-cell">${ganttCell(r, R)}</td>
+      <td style="white-space:nowrap">${r.summary || r.pct >= 100 ? '' : `<button class="icon-btn" data-plan-done="${r.i}" title="Mark 100% complete">✓</button>`}<button class="icon-btn" data-plan-edit="${r.i}" title="Edit task">✎</button><button class="icon-btn" data-plan-del="${r.i}" title="Delete task">🗑</button></td>
+    </tr>`).join('')}
+    </tbody></table>${!shown.length ? '<div class="empty">No tasks match these filters</div>' : ''}` : '<div class="empty">This plan has no tasks yet — click “+ Task”.</div>';
+}
+function renderPlanCard() {
+  const el = gid('planCard'); if (!el) return;
+  if (!state.plan || !state.plan.tasks.length) { el.innerHTML = `<h2>Project plan</h2><div class="empty" style="padding:16px 8px">No project plan yet — <a href="#" data-goto-view="plan">upload an Excel or Microsoft Project plan</a> to track tasks, due dates and % complete.</div>`; return; }
+  const rows = planRows(), st = planStats(rows), win = planWin();
+  const next = [...st.overdue, ...st.soon].sort((a, b) => a.finish.localeCompare(b.finish)).slice(0, 5);
+  el.innerHTML = `<h2>Project plan <span class="hint">${esc(state.plan.name || '')}</span></h2>
+    <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-end">
+      <div style="min-width:180px"><div class="muted small">Overall complete</div><div style="font-size:28px;font-weight:650;line-height:1.2">${st.overall}%</div><div class="meter"><span style="width:${st.overall}%"></span></div></div>
+      <div><div class="muted small">Tasks complete</div><div style="font-size:20px;font-weight:650">${st.complete.length} / ${st.leaves.length}</div></div>
+      <div><div class="muted small"><span class="dot" style="background:var(--warning)"></span> Due in ${win} days</div><div style="font-size:20px;font-weight:650">${st.soon.length}</div></div>
+      <div><div class="muted small"><span class="dot" style="background:var(--critical)"></span> Overdue</div><div style="font-size:20px;font-weight:650">${st.overdue.length}</div></div>
+      ${st.nextMs ? `<div><div class="muted small">Next milestone</div><div style="font-weight:600">◆ ${esc(st.nextMs.t.name)} <span class="small muted">${fmtDate(st.nextMs.finish)}</span></div></div>` : ''}
+      <div class="spacer"></div><a href="#" data-goto-view="plan" class="small">Open project plan →</a>
+    </div>
+    ${next.length ? `<ul class="plan-card-list">${next.map(r => `<li>${planPill(r)}<span class="grow">${r.milestone ? '◆ ' : ''}${esc(r.t.name)}</span><span class="small muted">${esc(r.t.owner || '')}</span><span class="small" style="white-space:nowrap">${relDue(r.finish)}</span>${pctBar(r.pct, planFill(r))}<span class="small" style="width:34px;text-align:right">${r.pct}%</span></li>`).join('')}</ul>` : `<p class="small muted" style="margin:10px 0 0">Nothing overdue or due within ${win} days.</p>`}`;
+}
+
+/* ---- editing ---- */
+const planForm = gid('planForm');
+function openPlanDialog(idx) {
+  const t = idx != null ? state.plan.tasks[idx] : null;
+  planForm.reset();
+  gid('planDialogTitle').textContent = t ? 'Edit task' : 'Add task';
+  planForm.idx.value = t ? idx : '';
+  planForm.tname.value = t ? t.name : '';
+  planForm.owner.value = t ? t.owner || '' : '';
+  planForm.start.value = t ? t.start || '' : '';
+  planForm.finish.value = t ? t.finish || '' : '';
+  planForm.pct.value = t ? t.pct : 0;
+  planForm.level.value = t ? t.level : (state.plan.tasks.length ? state.plan.tasks[state.plan.tasks.length - 1].level : 1);
+  planForm.milestone.value = t && t.milestone ? '1' : '';
+  planForm.notes.value = t ? t.notes || '' : '';
+  gid('planDialog').showModal();
+}
+planForm.addEventListener('submit', () => {
+  const d = { name: planForm.tname.value.trim(), owner: planForm.owner.value.trim(), start: planForm.start.value, finish: planForm.finish.value, pct: clampPct(planForm.pct.value), level: Math.max(1, Math.min(10, parseInt(planForm.level.value, 10) || 1)), milestone: !!planForm.milestone.value, notes: planForm.notes.value.trim() };
+  if (d.start && d.finish && d.finish < d.start) [d.start, d.finish] = [d.finish, d.start];
+  if (planForm.idx.value !== '') Object.assign(state.plan.tasks[+planForm.idx.value], d);
+  else state.plan.tasks.push({ id: uid(), wbs: '', ...d });
+  save(); toast('Task saved');
+});
+const planInput = gid('planFileInput');
+planInput.addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) importPlanFile(f); });
+gid('planDrop').addEventListener('click', () => planInput.click());
+gid('planDrop').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); planInput.click(); } });
+gid('btnPlanReplace').addEventListener('click', () => planInput.click());
+gid('btnPlanRemove').addEventListener('click', () => { if (confirm('Remove the project plan from this dashboard? Meetings and action items are not affected.')) { state.plan = null; save(); toast('Project plan removed'); } });
+gid('btnPlanAdd').addEventListener('click', () => openPlanDialog(null));
+gid('planBlank').addEventListener('click', e => { e.preventDefault(); state.plan = { name: 'Project plan', source: '', importedAt: Date.now(), tasks: [] }; save(); openPlanDialog(null); });
+gid('planTemplate').addEventListener('click', e => {
+  e.preventDefault();
+  const d = n => toISO(addDays(today(), n));
+  download('project-plan-template.csv', ['WBS,Task Name,Outline Level,Owner,Start,Finish,% Complete,Milestone',
+    `1,Phase 1 — Plan,1,,${d(0)},${d(20)},,`, `1.1,Define scope,2,Sarah Chen,${d(0)},${d(7)},50%,`, `1.2,Scope sign-off,2,Sarah Chen,${d(8)},${d(8)},0%,Yes`,
+    `2,Phase 2 — Build,1,,${d(9)},${d(45)},,`, `2.1,Build solution,2,Raj Patel,${d(9)},${d(40)},0%,`, `2.2,Go-live,2,Raj Patel,${d(45)},${d(45)},0%,Yes`].join('\n') + '\n', 'text/csv');
+});
+gid('btnPlanExport').addEventListener('click', () => {
+  const rows = planRows();
+  const lines = [['WBS', 'Task Name', 'Outline Level', 'Owner', 'Start', 'Finish', '% Complete', 'Status', 'Milestone', 'Notes']].concat(rows.map(r => [r.t.wbs, r.t.name, r.level, r.t.owner, r.start, r.finish, r.pct + '%', r.summary ? 'Summary' : PLAN_STATUS[r.status][0], r.milestone ? 'Yes' : '', r.t.notes]));
+  download(slug(state.plan.name || 'project-plan') + '-' + toISO(today()) + '.csv', lines.map(l => l.map(csvCell).join(',')).join('\n'), 'text/csv');
+});
+['pSearch', 'pStatus', 'pOwner'].forEach(id => gid(id).addEventListener(id === 'pSearch' ? 'input' : 'change', renderPlan));
+gid('pWindow').addEventListener('change', e => { state.settings.planWindow = +e.target.value; save(); });
+gid('pExpand').addEventListener('click', () => { planCollapsed.clear(); renderPlan(); });
+gid('pCollapse').addEventListener('click', () => { planRows().filter(r => r.summary).forEach(r => planCollapsed.add(r.t.id)); renderPlan(); });
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-plan-toggle],[data-plan-done],[data-plan-edit],[data-plan-del]');
+  if (!t || !state.plan) return;
+  const d = t.dataset;
+  if (d.planToggle) { planCollapsed.has(d.planToggle) ? planCollapsed.delete(d.planToggle) : planCollapsed.add(d.planToggle); renderPlan(); }
+  else if (d.planDone) { state.plan.tasks[+d.planDone].pct = 100; save(); toast('Task marked complete'); }
+  else if (d.planEdit) openPlanDialog(+d.planEdit);
+  else if (d.planDel) {
+    const i = +d.planDel, r = planRows()[i], n = r.end - i;
+    if (confirm(n > 1 ? `Delete “${r.t.name}” and its ${plural(n - 1, 'sub-task')}?` : `Delete the task “${r.t.name}”?`)) { state.plan.tasks.splice(i, n); save(); }
+  }
+});
+document.addEventListener('change', e => {
+  const t = e.target; if (!t.dataset || t.dataset.planPct == null || !state.plan) return;
+  const task = state.plan.tasks[+t.dataset.planPct]; if (!task) return;
+  task.pct = clampPct(t.value); save();
+});
+
+/* ---------------- emails (.msg from Outlook, .eml) ---------------- */
+const isEmailFile = f => /\.(msg|eml)$/i.test(f.name || '') || /message\/rfc822|vnd\.ms-outlook/i.test(f.type || '');
+function htmlToText(html) {
+  const pre = String(html).replace(/<(style|script|head)[\s\S]*?<\/\1>/gi, '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|tr|h[1-6]|table|blockquote)>/gi, '\n').replace(/<li[^>]*>/gi, '- ');
+  const doc = new DOMParser().parseFromString(pre, 'text/html');
+  return (doc.body ? doc.body.textContent : '').replace(/ /g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+const binStr = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return s; };
+const strBytes = s => { const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i) & 255; return u; };
+function qpBytes(s) { s = s.replace(/=\r?\n/g, ''); const out = []; for (let i = 0; i < s.length; i++) { if (s[i] === '=' && /^[0-9A-Fa-f]{2}$/.test(s.substr(i + 1, 2))) { out.push(parseInt(s.substr(i + 1, 2), 16)); i += 2; } else out.push(s.charCodeAt(i) & 255); } return new Uint8Array(out); }
+function decodeText(bytes, charset) { try { return new TextDecoder(charset || 'utf-8').decode(bytes); } catch (e) { return new TextDecoder('utf-8').decode(bytes); } }
+function decodeWords(v) {
+  return String(v || '').replace(/(\?=)\s+(=\?)/g, '$1$2').replace(/=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g, (m, cs, enc, t) => {
+    try { return decodeText(/b/i.test(enc) ? fromB64(t) : qpBytes(t.replace(/_/g, ' ')), cs); } catch (e) { return m; }
+  }).trim();
+}
+function param(h, name) { const m = new RegExp(name + '\\s*=\\s*("([^"]*)"|[^;\\s]+)', 'i').exec(h || ''); return m ? (m[2] !== undefined ? m[2] : m[1]) : ''; }
+function emlPart(raw) {
+  const cut = raw.search(/\r?\n\r?\n/);
+  const head = cut < 0 ? raw : raw.slice(0, cut), body = cut < 0 ? '' : raw.slice(cut).replace(/^\r?\n\r?\n/, '');
+  const h = {};
+  head.replace(/\r?\n[ \t]+/g, ' ').split(/\r?\n/).forEach(l => { const i = l.indexOf(':'); if (i > 0) { const k = l.slice(0, i).trim().toLowerCase(); if (!(k in h)) h[k] = l.slice(i + 1).trim(); } });
+  const ct = h['content-type'] || 'text/plain';
+  if (/^multipart\//i.test(ct)) {
+    const b = param(ct, 'boundary'); let plain = '', html = '';
+    if (b) for (const part of body.split('--' + b).slice(1)) {
+      if (/^--/.test(part)) break;
+      const r = emlPart(part.replace(/^\r?\n/, ''));
+      if (r.plain && !plain) plain = r.plain;
+      if (r.html && !html) html = r.html;
+    }
+    return { h, plain, html };
+  }
+  if (/^text\//i.test(ct) && !/attachment/i.test(h['content-disposition'] || '')) {
+    const te = (h['content-transfer-encoding'] || '').toLowerCase();
+    const bytes = te === 'base64' ? fromB64(body.replace(/[^A-Za-z0-9+/=]/g, '')) : te === 'quoted-printable' ? qpBytes(body) : strBytes(body);
+    const text = decodeText(bytes, param(ct, 'charset'));
+    return /html/i.test(ct) ? { h, plain: '', html: text } : { h, plain: text, html: '' };
+  }
+  return { h, plain: '', html: '' };
+}
+function parseEml(buf) {
+  const r = emlPart(binStr(new Uint8Array(buf)));
+  const d = r.h.date ? new Date(r.h.date) : null;
+  return { subject: decodeWords(r.h.subject), from: decodeWords(r.h.from), to: decodeWords(r.h.to), cc: decodeWords(r.h.cc),
+    date: d && !isNaN(d) ? d.toISOString() : '', body: (r.plain || htmlToText(r.html || '')).replace(/\r\n/g, '\n').trim() };
+}
+/** Outlook .msg = OLE compound file; message properties are streams named __substg1.0_<id><type>. */
+function parseMsg(buf) {
+  const dv = new DataView(buf), u8 = new Uint8Array(buf);
+  if (buf.byteLength < 512 || dv.getUint32(0, true) !== 0xE011CFD0 || dv.getUint32(4, true) !== 0xE11AB1A1) throw new Error('not an Outlook .msg file');
+  const ssz = 1 << dv.getUint16(30, true), mss = 1 << dv.getUint16(32, true);
+  const nFat = dv.getUint32(44, true), dirStart = dv.getUint32(48, true), cutoff = dv.getUint32(56, true);
+  const mfStart = dv.getUint32(60, true), nMf = dv.getUint32(64, true), difStart = dv.getUint32(68, true), nDif = dv.getUint32(72, true);
+  const END = 0xFFFFFFFA, off = x => (x + 1) * ssz, per = ssz / 4;
+  const fatSecs = [];
+  for (let i = 0; i < 109 && fatSecs.length < nFat; i++) fatSecs.push(dv.getUint32(76 + i * 4, true));
+  for (let d = difStart, k = 0; k < nDif && d < END; k++) { for (let i = 0; i < per - 1 && fatSecs.length < nFat; i++) fatSecs.push(dv.getUint32(off(d) + i * 4, true)); d = dv.getUint32(off(d) + (per - 1) * 4, true); }
+  const fat = new Uint32Array(fatSecs.length * per);
+  fatSecs.forEach((x, i) => { for (let j = 0; j < per && off(x) + j * 4 + 4 <= buf.byteLength; j++) fat[i * per + j] = dv.getUint32(off(x) + j * 4, true); });
+  const chain = (x, tbl) => { const out = []; while (x < END && x < tbl.length && out.length <= tbl.length) { out.push(x); x = tbl[x]; } return out; };
+  const readChain = (x, size) => { const secs = chain(x, fat), out = new Uint8Array(secs.length * ssz); secs.forEach((q, i) => out.set(u8.subarray(off(q), off(q) + ssz), i * ssz)); return size == null ? out : out.subarray(0, size); };
+  const dir = readChain(dirStart), dd = new DataView(dir.buffer, dir.byteOffset, dir.byteLength), nEnt = dir.length / 128;
+  const ent = i => { const b = i * 128, nl = dd.getUint16(b + 64, true); let name = ''; for (let k = 0; k + 2 < nl; k += 2) name += String.fromCharCode(dd.getUint16(b + k, true)); return { name, type: dir[b + 66], left: dd.getUint32(b + 68, true), right: dd.getUint32(b + 72, true), child: dd.getUint32(b + 76, true), start: dd.getUint32(b + 116, true), size: dd.getUint32(b + 120, true) }; };
+  const root = ent(0), mini = readChain(root.start, root.size);
+  let mfat = new Uint32Array(0);
+  if (nMf) { const r = readChain(mfStart), v = new DataView(r.buffer, r.byteOffset, r.byteLength); mfat = new Uint32Array(r.length / 4); for (let i = 0; i < mfat.length; i++) mfat[i] = v.getUint32(i * 4, true); }
+  const readStream = e => {
+    if (e.size >= cutoff) return readChain(e.start, e.size);
+    const secs = chain(e.start, mfat), out = new Uint8Array(secs.length * mss);
+    secs.forEach((q, i) => out.set(mini.subarray(q * mss, (q + 1) * mss), i * mss)); return out.subarray(0, e.size);
+  };
+  const streams = {}, seen = new Set();
+  const walk = i => { if (i >= END || i >= nEnt || seen.has(i)) return; seen.add(i); const e = ent(i); walk(e.left); walk(e.right); if (e.type === 2) streams[e.name.toUpperCase()] = e; };
+  walk(root.child);   // top-level streams only (recipients/attachments are sub-storages)
+  const str = id => {
+    const u = streams['__SUBSTG1.0_' + id + '001F']; if (u) return new TextDecoder('utf-16le').decode(readStream(u)).replace(/\0+$/, '');
+    const a = streams['__SUBSTG1.0_' + id + '001E']; if (a) return new TextDecoder('windows-1252').decode(readStream(a)).replace(/\0+$/, '');
+    return '';
+  };
+  let body = str('1000');
+  if (!body) { const hb = streams['__SUBSTG1.0_10130102']; if (hb) body = htmlToText(new TextDecoder().decode(readStream(hb))); }
+  let date = '';
+  const pe = streams['__PROPERTIES_VERSION1.0'];
+  if (pe) {
+    const pr = readStream(pe), pv = new DataView(pr.buffer, pr.byteOffset, pr.byteLength);
+    for (let o = 32; o + 16 <= pr.length; o += 16) {
+      const tag = pv.getUint32(o, true);
+      if (tag === 0x00390040 || tag === 0x0E060040) {
+        const ms = (pv.getUint32(o + 12, true) * 4294967296 + pv.getUint32(o + 8, true)) / 10000 - 11644473600000;
+        if (ms > 0) { date = new Date(ms).toISOString(); if (tag === 0x00390040) break; }
+      }
+    }
+  }
+  const fromName = str('0C1A') || str('0042'), fromAddr = [str('5D01'), str('0C1F'), str('0065')].find(x => x && x.includes('@')) || '';
+  return { subject: str('0037'), from: fromName && fromAddr && fromName !== fromAddr ? `${fromName} <${fromAddr}>` : (fromName || fromAddr),
+    to: str('0E04'), cc: str('0E03'), date, body: body.replace(/\r\n/g, '\n').trim() };
+}
+async function parseEmail(file) {
+  const buf = await file.arrayBuffer();
+  const u = new Uint8Array(buf, 0, Math.min(8, buf.byteLength));
+  return (u[0] === 0xD0 && u[1] === 0xCF) ? parseMsg(buf) : parseEml(buf);
+}
+const emailNames = (...lists) => [...new Set(lists.join(';').split(/[;,](?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x => x.trim().replace(/<[^>]*>/, '').replace(/^"|"$/g, '').trim() || x.trim()).filter(Boolean))];
+const emailMeta = em => ({ subject: em.subject || '', from: em.from || '', to: em.to || '', cc: em.cc || '', date: em.date || '', snippet: (em.body || '').slice(0, 280) });
+const emailDateLabel = iso => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); };
+function emailAsMinutes(em) {
+  return [em.from && 'From: ' + em.from, em.to && 'To: ' + em.to, em.cc && 'Cc: ' + em.cc, em.date && 'Sent: ' + emailDateLabel(em.date), em.subject && 'Subject: ' + em.subject].filter(Boolean).join('\n') + '\n\n' + (em.body || '');
+}
+/** Dropped on the dashboard: turn an email into a new meeting (subject, date, people, body), attaching the original. */
+async function emailToMeeting(file) {
+  const em = await parseEmail(file);
+  const d = em.date ? new Date(em.date) : null;
+  openMeetingDialog(null, { title: (em.subject || 'Email').replace(/^(re|fw|fwd)\s*:\s*/i, ''), date: d && !isNaN(d) ? toISO(d) : toISO(today()), attendees: emailNames(em.from, em.to, em.cc).join(', '), minutes: emailAsMinutes(em) });
+  staged.meeting = [file]; refreshDialogAtts();
+  toast('Email loaded — review the meeting and save; the email will be attached');
+}
+/** Text-only drag (e.g. new Outlook / Outlook on the web): keep what was dragged as a file. */
+function textDropToFile(dt) {
+  const html = dt.getData('text/html'), txt = dt.getData('text/plain');
+  if (!html && !txt) return null;
+  const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '.');
+  return html ? new File([html], `Dragged email ${stamp}.html`, { type: 'text/html' }) : new File([txt], `Dragged email ${stamp}.txt`, { type: 'text/plain' });
+}
+let emailView = null;
+function showEmail(a, em, blob) {
+  emailView = { a, blob };
+  document.getElementById('emailSubject').textContent = em.subject || a.name;
+  document.getElementById('emailMeta').innerHTML = [['From', em.from], ['To', em.to], ['Cc', em.cc], ['Sent', emailDateLabel(em.date)]].filter(x => x[1]).map(x => `<div><span class="muted">${x[0]}:</span> ${esc(x[1])}</div>`).join('');
+  document.getElementById('emailBody').textContent = em.body || '(no text body)';
+  document.getElementById('emailDialog').showModal();
+}
+
 /* ---------------- attachments (drag & drop, encrypted) ---------------- */
 const fmtSize = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
-const fileIcon = (name, type) => /pdf/i.test(type + name) ? '📕' : /image\//.test(type) ? '🖼' : /sheet|excel|csv|\.xlsx?$/i.test(type + name) ? '📊' : /presentation|powerpoint|\.pptx?$/i.test(type + name) ? '📽' : /word|\.docx?$/i.test(type + name) ? '📄' : '📎';
+const fileIcon = (name, type) => /\.(msg|eml)$/i.test(name) ? '✉' : /pdf/i.test(type + name) ? '📕' : /image\//.test(type) ? '🖼' : /sheet|excel|csv|\.xlsx?$/i.test(type + name) ? '📊' : /presentation|powerpoint|\.pptx?$/i.test(type + name) ? '📽' : /word|\.docx?$/i.test(type + name) ? '📄' : '📎';
 const attsFor = (type, id) => state.attachments.filter(a => a.parentType === type && a.parentId === id);
 const staged = { meeting: [], action: [] };   // files dropped into a dialog before the item is saved
 
@@ -1453,8 +2112,10 @@ async function addAttachments(files, parentType, parentId) {
     if (f.size > MAX_FILE) { skipped.push(f.name + ' (over 25 MB)'); continue; }
     try {
       const id = uid();
+      let email = null;
+      if (isEmailFile(f)) { try { email = emailMeta(await parseEmail(f)); } catch (err) { console.warn('email not readable', err); } }
       await putFile({ id, ...(await encFile(cryptoKey, await f.arrayBuffer())) });
-      state.attachments.push({ id, parentType, parentId, name: f.name, size: f.size, type: f.type || '', addedAt: Date.now() });
+      state.attachments.push({ id, parentType, parentId, name: f.name, size: f.size, type: f.type || '', addedAt: Date.now(), ...(email ? { email } : {}) });
       added++;
     } catch (e) { console.error(e); skipped.push(f.name + ' (' + (e.message || 'storage error') + ')'); }
   }
@@ -1468,18 +2129,25 @@ async function openAttachment(id) {
   try {
     const r = await getFile(id); if (!r) throw new Error('file data missing on this device');
     const pt = await decFile(cryptoKey, r);
-    const url = URL.createObjectURL(new Blob([pt], { type: a.type || 'application/octet-stream' }));
-    const link = Object.assign(document.createElement('a'), { href: url, download: a.name });
-    document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+    const blob = new Blob([pt], { type: a.type || 'application/octet-stream' });
+    if (a.email) { let em; try { em = await parseEmail(new File([pt], a.name)); } catch (err) { em = { ...a.email, body: a.email.snippet }; } showEmail(a, em, blob); return; }
+    downloadBlob(blob, a.name);
   } catch (e) { toast('Could not open ' + a.name + ': ' + e.message); }
 }
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const link = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+document.getElementById('emailDownload').addEventListener('click', () => { if (emailView) downloadBlob(emailView.blob, emailView.a.name); });
 async function removeAttachments(ids) {
   ids = new Set(ids); if (!ids.size) return;
   for (const id of ids) await delFile(id).catch(() => {});
   state.attachments = state.attachments.filter(a => !ids.has(a.id));
 }
 function attChips(list, opts = {}) {
-  return list.map(a => `<span class="att-chip"><a href="#" data-att-open="${esc(a.id)}" title="Download ${esc(a.name)}">${fileIcon(a.name, a.type)} ${esc(a.name)}</a><span class="muted">${fmtSize(a.size)}</span>${opts.noDelete ? '' : `<button type="button" class="att-x" data-att-del="${esc(a.id)}" title="Remove attachment" aria-label="Remove ${esc(a.name)}">×</button>`}</span>`).join('');
+  return list.map(a => a.email ? `<span class="att-chip"><a href="#" data-att-open="${esc(a.id)}" title="Open email: ${esc(a.email.subject || a.name)}">✉ ${esc(a.email.subject || a.name)}</a><span class="muted">${esc(emailNames(a.email.from)[0] || '')}${a.email.date ? ' · ' + esc(fmtDate(toISO(new Date(a.email.date)))) : ''}</span>${opts.noDelete ? '' : `<button type="button" class="att-x" data-att-del="${esc(a.id)}" title="Remove attachment" aria-label="Remove ${esc(a.name)}">×</button>`}</span>`
+  : `<span class="att-chip"><a href="#" data-att-open="${esc(a.id)}" title="Download ${esc(a.name)}">${fileIcon(a.name, a.type)} ${esc(a.name)}</a><span class="muted">${fmtSize(a.size)}</span>${opts.noDelete ? '' : `<button type="button" class="att-x" data-att-del="${esc(a.id)}" title="Remove attachment" aria-label="Remove ${esc(a.name)}">×</button>`}</span>`).join('');
 }
 function stagedChips(kind) {
   return staged[kind].map((f, i) => `<span class="att-chip staged"><span>${fileIcon(f.name, f.type)} ${esc(f.name)}</span><span class="muted">${fmtSize(f.size)} · added on save</span><button type="button" class="att-x" data-stage-del="${kind}:${i}" aria-label="Remove ${esc(f.name)}">×</button></span>`).join('');
