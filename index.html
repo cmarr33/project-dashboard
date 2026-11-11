@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Management Dashboard</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --surface-2: #f3f2ef;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --series-1: #2a78d6;
+  --good: #0ca30c;
+  --good-text: #006300;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --wash: rgba(42,120,214,0.08);
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface-1: #1a1a19; --surface-2: #232322;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --accent: #3987e5; --series-1: #3987e5; --good-text: #0ca30c;
+    --wash: rgba(57,135,229,0.14); --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface-1: #1a1a19; --surface-2: #232322;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --accent: #3987e5; --series-1: #3987e5; --good-text: #0ca30c;
+  --wash: rgba(57,135,229,0.14); --shadow: none;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--text-primary);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+header.top {
+  position: sticky; top: 0; z-index: 20; background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px; padding: 12px 24px; flex-wrap: wrap;
+}
+header.top h1 { font-size: 18px; margin: 0; font-weight: 650; }
+header.top .sub { color: var(--text-muted); font-size: 12px; }
+nav.tabs { display: flex; gap: 4px; margin-left: 12px; }
+nav.tabs button {
+  border: 0; background: transparent; padding: 6px 12px; border-radius: 8px;
+  color: var(--text-secondary); cursor: pointer; font-weight: 550;
+}
+nav.tabs button[aria-selected="true"] { background: var(--wash); color: var(--accent); }
+.spacer { flex: 1; }
+.btn {
+  border: 1px solid var(--border); background: var(--surface-1); padding: 6px 12px;
+  border-radius: 8px; cursor: pointer; font-weight: 550; white-space: nowrap;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.primary:hover { filter: brightness(1.07); }
+.btn.danger { color: var(--critical); }
+.btn.sm { padding: 3px 8px; font-size: 12px; }
+.icon-btn { border: 0; background: transparent; cursor: pointer; color: var(--text-muted); padding: 4px 6px; border-radius: 6px; }
+.icon-btn:hover { background: var(--surface-2); color: var(--text-primary); }
+main { padding: 20px 24px 48px; max-width: 1400px; margin: 0 auto; }
+.view[hidden] { display: none; }
+.card {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 18px; box-shadow: var(--shadow);
+}
+.card h2 { font-size: 14px; margin: 0 0 12px; font-weight: 650; }
+.card h2 .hint { color: var(--text-muted); font-weight: 400; font-size: 12px; margin-left: 6px; }
+.grid { display: grid; gap: 16px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-bottom: 16px; }
+.kpi .label { color: var(--text-secondary); font-size: 12px; font-weight: 550; display: flex; align-items: center; gap: 6px; }
+.kpi .value { font-size: 30px; font-weight: 650; line-height: 1.15; margin-top: 4px; }
+.kpi .foot { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+.meter { height: 6px; background: var(--surface-2); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.meter > span { display: block; height: 100%; background: var(--good); border-radius: 3px; }
+.two { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); margin-bottom: 16px; }
+.summary-text { font-size: 15px; line-height: 1.6; color: var(--text-primary); margin: 0; }
+.summary-text b { font-weight: 650; }
+.dropzone {
+  border: 1.5px dashed var(--axis); border-radius: 12px; padding: 18px; text-align: center;
+  color: var(--text-secondary); cursor: pointer; transition: background .15s, border-color .15s;
+}
+.dropzone:hover, .dropzone.over { background: var(--wash); border-color: var(--accent); }
+.dropzone strong { color: var(--text-primary); }
+.dropzone .types { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.upload-actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--text-muted); font-weight: 550; font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--text-primary); }
+td { padding: 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--surface-2); }
+.muted { color: var(--text-muted); }
+.small { font-size: 12px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px;
+  font-size: 12px; font-weight: 550; border: 1px solid var(--border); white-space: nowrap;
+  color: var(--text-primary);
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.status-select { border: 1px solid var(--border); background: var(--surface-1); border-radius: 6px; padding: 2px 4px; font-size: 12px; }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.filters input, .filters select, .field input, .field select, .field textarea {
+  border: 1px solid var(--border); background: var(--surface-1); border-radius: 8px; padding: 6px 10px;
+}
+.filters input[type="search"] { min-width: 240px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.empty { color: var(--text-muted); text-align: center; padding: 28px 8px; }
+.meeting-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: var(--surface-1); }
+.meeting-card h3 { margin: 0; font-size: 15px; font-weight: 650; }
+.meeting-card .meta { color: var(--text-muted); font-size: 12px; }
+.meeting-card ul { margin: 6px 0 0; padding-left: 18px; }
+.meeting-card li { margin: 2px 0; }
+.meeting-head { display: flex; gap: 8px; align-items: flex-start; }
+.meeting-head .grow { flex: 1; }
+.sec-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); font-weight: 650; margin-top: 10px; }
+details.minutes summary { cursor: pointer; color: var(--accent); font-size: 12px; margin-top: 8px; }
+details.minutes pre { white-space: pre-wrap; font: inherit; font-size: 13px; background: var(--surface-2); padding: 10px 12px; border-radius: 8px; margin: 8px 0 0; max-height: 360px; overflow: auto; }
+.overdue-text { color: var(--critical); font-weight: 600; }
+.soon-text { color: var(--text-primary); font-weight: 600; }
+.done-row td:not(:first-child) { color: var(--text-muted); }
+.done-row .act-text { text-decoration: line-through; }
+/* modal */
+dialog { border: 1px solid var(--border); border-radius: 14px; padding: 0; background: var(--surface-1); color: var(--text-primary); width: min(720px, 94vw); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+dialog form { padding: 20px 22px; }
+dialog h2 { margin: 0 0 14px; font-size: 17px; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.field label { font-size: 12px; color: var(--text-secondary); font-weight: 550; }
+.field textarea { min-height: 200px; resize: vertical; line-height: 1.45; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.detect-box { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; font-size: 12px; margin-bottom: 12px; }
+.detect-box table td, .detect-box table th { padding: 4px 6px; }
+.tip {
+  position: fixed; pointer-events: none; z-index: 100; background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.15); opacity: 0; transition: opacity .08s; max-width: 260px;
+}
+.tip.on { opacity: 1; }
+.tip b { font-weight: 650; }
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text-primary); color: var(--page);
+  padding: 8px 16px; border-radius: 8px; font-size: 13px; z-index: 200; opacity: 0; transition: opacity .2s; pointer-events: none;
+}
+.toast.on { opacity: 1; }
+.hit { fill: transparent; cursor: default; }
+.mark-hover { opacity: .85; }
+/* attachments */
+.att-drop { border: 1.5px dashed var(--axis); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--text-secondary); cursor: pointer; text-align: center; transition: background .12s, border-color .12s; }
+.att-drop:hover, .att-drop:focus-visible { border-color: var(--accent); background: var(--wash); outline: none; }
+.att-drop.sm { padding: 6px 10px; text-align: left; margin-top: 8px; }
+.att-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.att-list:empty { display: none; }
+.att-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 12px; background: var(--surface-2); max-width: 100%; }
+.att-chip a { color: var(--text-primary); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
+.att-chip a:hover { text-decoration: underline; }
+.att-chip.staged { border-style: dashed; }
+.att-x { border: 0; background: none; cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; padding: 0 4px; border-radius: 50%; }
+.att-x:hover { color: var(--critical); }
+.drop-over { outline: 2px dashed var(--accent) !important; outline-offset: -2px; background: var(--wash) !important; }
+tr.drop-over td { background: var(--wash) !important; }
+.att-count { font-size: 11px; color: var(--text-muted); margin-left: 6px; white-space: nowrap; }
+/* lock screen */
+body.locked > :not(#lock):not(.toast) { visibility: hidden; }
+.lock { position: fixed; inset: 0; z-index: 300; background: var(--page); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.lock[hidden] { display: none; }
+.lock-card { width: min(400px, 100%); background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 28px 26px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; }
+.lock-card h2 { margin: 0; font-size: 18px; }
+.lock-card p { margin: 0 0 4px; }
+.lock-card input { border: 1px solid var(--border); background: var(--surface-1); border-radius: 8px; padding: 9px 12px; }
+.lock-card .btn { padding: 9px 12px; }
+.lock-icon { font-size: 28px; line-height: 1; }
+.lock-err { color: var(--critical); font-size: 12px; min-height: 16px; }
+.link-btn { border: 0; background: none; color: var(--text-muted); font-size: 12px; cursor: pointer; padding: 4px 0; text-decoration: underline; }
+.link-btn:hover { color: var(--text-primary); }
+.lock-note { font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--grid); padding-top: 10px; margin-top: 4px; }
+@media (max-width: 720px) {
+  .two { grid-template-columns: 1fr; }
+  .row, .row3 { grid-template-columns: 1fr; }
+  nav.tabs { margin-left: 0; }
+}
+@media print {
+  header.top .btn, nav.tabs, .dropzone, .upload-actions, .icon-btn { display: none !important; }
+  .view[hidden] { display: block; }
+}
+</style>
+</head>
+<body class="locked">
+
+<div id="lock" class="lock">
+  <form class="lock-card" id="lockForm" autocomplete="on">
+    <div class="lock-icon">🔒</div>
+    <h2 id="lockTitle">Sign in</h2>
+    <p id="lockMsg" class="muted small"></p>
+    <input type="text" id="lockUser" name="username" autocomplete="username" placeholder="Username" aria-label="Username" required autocapitalize="off" spellcheck="false">
+    <input type="password" id="lockPass" name="password" autocomplete="current-password" placeholder="Password" aria-label="Password" required>
+    <input type="password" id="lockPass2" autocomplete="new-password" placeholder="Confirm password" aria-label="Confirm password" hidden>
+    <div class="lock-err" id="lockErr" role="alert"></div>
+    <button class="btn primary" type="submit" id="lockBtn">Sign in</button>
+    <button type="button" class="link-btn" id="lockSwitch">New here? Create an account</button>
+    <button type="button" class="link-btn" id="lockReset" hidden>Forgot password? Delete this account’s data</button>
+    <div class="lock-note">Each account’s data is encrypted in this browser with AES-256 using its password, and is never sent anywhere. Accounts exist only on this device and browser. Your data stays saved after you sign out. <b>A forgotten password cannot be reset — the data cannot be recovered.</b></div>
+  </form>
+</div>
+
+<header class="top">
+  <div>
+    <h1 id="projectName" title="Click to rename project">Project Management Dashboard</h1>
+    <div class="sub" id="todayLabel"></div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="dashboard" aria-selected="true">Dashboard</button>
+    <button role="tab" data-view="meetings" aria-selected="false">Meetings</button>
+    <button role="tab" data-view="actions" aria-selected="false">Action Items</button>
+  </nav>
+  <div class="spacer"></div>
+  <button class="btn" id="btnAddMeeting">+ Meeting minutes</button>
+  <button class="btn primary" id="btnAddAction">+ Action item</button>
+  <button class="btn" id="btnExport" title="Download an encrypted backup of all data">Export</button>
+  <button class="btn" id="btnMore" title="More options">⋯</button>
+  <span class="muted small" id="whoami"></span>
+  <button class="btn" id="btnLock" title="Sign out and lock the dashboard">Sign out</button>
+  <button class="icon-btn" id="btnTheme" title="Toggle light/dark">◐</button>
+</header>
+
+<main>
+  <!-- DASHBOARD -->
+  <section class="view" id="view-dashboard">
+    <div class="grid two" style="grid-template-columns: 2fr 1fr;">
+      <div class="card">
+        <h2>Project summary</h2>
+        <p class="summary-text" id="summaryText"></p>
+      </div>
+      <div class="card">
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload files">
+          <strong>Drop files here</strong> or click to upload
+          <div class="types">Minutes: .docx, .txt, .md &nbsp;·&nbsp; Action items: .csv &nbsp;·&nbsp; Backup: .json</div>
+        </div>
+        <div class="upload-actions">
+          <button class="btn sm" id="btnPasteMinutes">Paste minutes</button>
+          <button class="btn sm" id="btnCsvTemplate">CSV template</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid kpis" id="kpis"></div>
+
+    <div class="grid two">
+      <div class="card">
+        <h2>Action items by owner <span class="hint">status breakdown</span></h2>
+        <div class="legend">
+          <span><i style="background:var(--good)"></i>Done</span>
+          <span><i style="background:var(--series-1)"></i>Open · on track</span>
+          <span><i style="background:var(--critical)"></i>Overdue</span>
+        </div>
+        <div id="ownerChart"></div>
+      </div>
+      <div class="card">
+        <h2>Upcoming due dates <span class="hint">open items by week</span></h2>
+        <div id="weekChart"></div>
+      </div>
+    </div>
+
+    <div class="grid two">
+      <div class="card">
+        <h2>Needs attention <span class="hint">overdue and due in the next 7 days</span></h2>
+        <div id="attentionList"></div>
+      </div>
+      <div class="card">
+        <h2>Owner workload</h2>
+        <div id="ownerTable"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Recent meetings <span class="hint">auto-summarized from uploaded minutes</span></h2>
+      <div id="recentMeetings"></div>
+    </div>
+  </section>
+
+  <!-- MEETINGS -->
+  <section class="view" id="view-meetings" hidden>
+    <div class="filters">
+      <input type="search" id="meetingSearch" placeholder="Search meetings and minutes…">
+      <div class="spacer"></div>
+      <button class="btn primary" id="btnAddMeeting2">+ Meeting minutes</button>
+    </div>
+    <div id="meetingList"></div>
+  </section>
+
+  <!-- ACTIONS -->
+  <section class="view" id="view-actions" hidden>
+    <div class="filters">
+      <input type="search" id="fSearch" placeholder="Search action items…">
+      <select id="fOwner"><option value="">All owners</option></select>
+      <select id="fStatus">
+        <option value="">All statuses</option>
+        <option value="active">Not done</option>
+        <option value="overdue">Overdue</option>
+        <option value="Open">Open</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Done">Done</option>
+      </select>
+      <select id="fMeeting"><option value="">All meetings</option></select>
+      <span class="muted small" id="fCount"></span>
+      <div class="spacer"></div>
+      <button class="btn" id="btnImportCsv">Import CSV</button>
+      <button class="btn primary" id="btnAddAction2">+ Action item</button>
+    </div>
+    <div class="card" style="padding:6px 8px;">
+      <div id="actionTable"></div>
+    </div>
+  </section>
+</main>
+
+<!-- Meeting dialog -->
+<dialog id="meetingDialog">
+  <form method="dialog" id="meetingForm">
+    <h2 id="meetingDialogTitle">Add meeting minutes</h2>
+    <input type="hidden" name="id">
+    <div class="row">
+      <div class="field"><label>Meeting title *</label><input name="title" required placeholder="e.g. Weekly status sync"></div>
+      <div class="field"><label>Meeting date *</label><input name="date" type="date" required></div>
+    </div>
+    <div class="field"><label>Attendees <span class="muted">(comma separated)</span></label><input name="attendees" placeholder="Sarah Chen, Raj Patel, …"></div>
+    <div class="field">
+      <label>Minutes <span class="muted">— lines starting with “Action:” are turned into action items. Add “Owner: Name” and “Due: date” (or @Name, “by Nov 20”).</span></label>
+      <textarea name="minutes" id="minutesText" placeholder="Paste or type minutes here…&#10;&#10;Decided to move launch to Q1.&#10;Risk: vendor contract not yet signed.&#10;Action: Send revised timeline to client — Owner: Sarah Chen — Due: 2026-11-20"></textarea>
+    </div>
+    <div class="field"><label>Attachments <span class="muted">— slides, PDFs, spreadsheets, images… (max 25 MB each, stored encrypted)</span></label>
+      <div class="att-drop" id="mAttDrop" data-drop-type="staged-meeting" tabindex="0" role="button">📎 Drag files here or <u>browse</u></div>
+      <div class="att-list" id="mAttList"></div>
+    </div>
+    <div class="detect-box" id="detectBox" hidden></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="btnLoadMinutesFile">Load from file…</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn" value="cancel" data-close>Cancel</button>
+      <button type="submit" class="btn primary" value="save">Save meeting</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Action dialog -->
+<dialog id="actionDialog">
+  <form method="dialog" id="actionForm">
+    <h2 id="actionDialogTitle">Add action item</h2>
+    <input type="hidden" name="id">
+    <div class="field"><label>Action item *</label><input name="text" required placeholder="What needs to be done?"></div>
+    <div class="row3">
+      <div class="field"><label>Owner *</label><input name="owner" required list="ownerList" placeholder="Name"></div>
+      <div class="field"><label>Due date</label><input name="due" type="date"></div>
+      <div class="field"><label>Status</label>
+        <select name="status"><option>Open</option><option>In Progress</option><option>Done</option></select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Priority</label>
+        <select name="priority"><option>Medium</option><option>High</option><option>Low</option></select>
+      </div>
+      <div class="field"><label>From meeting</label><select name="meetingId"><option value="">— None —</option></select></div>
+    </div>
+    <div class="field"><label>Notes</label><input name="notes" placeholder="Optional"></div>
+    <div class="field"><label>Attachments <span class="muted">— max 25 MB each, stored encrypted</span></label>
+      <div class="att-drop" id="aAttDrop" data-drop-type="staged-action" tabindex="0" role="button">📎 Drag files here or <u>browse</u></div>
+      <div class="att-list" id="aAttList"></div>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn primary">Save action item</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- CSV preview dialog -->
+<dialog id="csvDialog">
+  <form method="dialog" id="csvForm">
+    <h2>Import action items</h2>
+    <div id="csvPreview"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn primary" id="csvConfirm">Import</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- More menu dialog -->
+<dialog id="moreDialog" style="width:min(420px,94vw)">
+  <form method="dialog">
+    <h2>Data options</h2>
+    <p class="muted small" style="margin-top:-6px">Your data is saved automatically and permanently in this browser, encrypted with your account password. Signing out (automatically or with the button) never deletes anything. Export creates an encrypted backup — to share it, give the teammate the file and the password separately.</p>
+    <div class="field" style="margin-bottom:12px"><label for="idleSelect">Sign out automatically after inactivity</label>
+      <select id="idleSelect" style="border:1px solid var(--border);background:var(--surface-1);border-radius:8px;padding:6px 10px">
+        <option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">1 hour</option><option value="240">4 hours</option><option value="480">8 hours</option><option value="0">Never (not recommended on shared computers)</option>
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button type="button" class="btn" id="btnRename">Rename project</button>
+      <button type="button" class="btn" id="btnChangePass">Change password</button>
+      <button type="button" class="btn" id="btnExportPlain">Export unencrypted backup (.json)</button>
+      <button type="button" class="btn" id="btnExportCsv">Export action items (.csv, unencrypted)</button>
+      <button type="button" class="btn" id="btnPrint">Print / save dashboard as PDF</button>
+      <button type="button" class="btn" id="btnSample">Load sample data</button>
+      <button type="button" class="btn danger" id="btnClear">Clear all data</button>
+    </div>
+    <div class="dialog-actions"><button type="button" class="btn" data-close>Close</button></div>
+  </form>
+</dialog>
+
+<!-- Password prompt (import / change password) -->
+<dialog id="passDialog" style="width:min(440px,94vw)">
+  <form method="dialog" id="passForm">
+    <h2 id="passTitle"></h2>
+    <p id="passMsg" class="muted small" style="margin-top:-6px"></p>
+    <div id="passFields"></div>
+    <div class="lock-err" id="passErr" role="alert"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn primary" id="passOk">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<datalist id="ownerList"></datalist>
+<input type="file" id="fileInput" multiple accept=".txt,.md,.csv,.json,.docx" hidden>
+<input type="file" id="minutesFileInput" accept=".txt,.md,.docx" hidden>
+<input type="file" id="csvFileInput" accept=".csv" hidden>
+<input type="file" id="attFileInput" multiple hidden>
+<div class="tip" id="tip"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------------- state & storage ---------------- */
+/* Security model (all in the browser, nothing is sent to a server):
+   - Each account has a random AES-256-GCM data key (DEK). All dashboard data and
+     every attachment is encrypted with it.
+   - The DEK is stored only "wrapped" (encrypted) by a key derived from the account
+     password with PBKDF2-SHA256 (600k iterations, random salt). No password or hash
+     is stored; signing in = successfully unwrapping the DEK.
+   - Changing the password re-wraps the same DEK, so attachments need no re-encryption.
+   - Records live in localStorage (dashboard data) and IndexedDB (attachment files). */
+const KEY = 'pm-dashboard-v1';          // legacy plaintext storage (migrated, then removed)
+const UPREFIX = 'pm-dashboard-acct:';   // one record per account: UPREFIX + opaque account ID (no username)
+const LEGACY_UPREFIX = 'pm-dashboard-user:';   // older format keyed by plain username (migrated on sign-in)
+const ITER = 600000;
+const MAX_FILE = 25 * 1024 * 1024;
+let currentUser = null, currentId = null;
+/* Usernames are never stored in readable form. The account ID is a slow one-way hash of the
+   lower-case username; the real username is kept only inside the account's encrypted data. */
+const ID_SALT = new TextEncoder().encode('pm-dashboard/account-id/v1');
+const idCache = new Map();
+async function acctId(u) {
+  u = u.toLowerCase();
+  if (!idCache.has(u)) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(u), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: ID_SALT, iterations: 100000, hash: 'SHA-256' }, base, 256);
+    idCache.set(u, [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, '0')).join(''));
+  }
+  return idCache.get(u);
+}
+const recKey = id => UPREFIX + id;
+const readJSON = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+const readRec = id => readJSON(recKey(id));
+const legacyKey = u => LEGACY_UPREFIX + u.toLowerCase();
+async function accountExists(u) { return localStorage.getItem(recKey(await acctId(u))) !== null || localStorage.getItem(legacyKey(u)) !== null; }
+function accountCount() { let n = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(UPREFIX) || k.startsWith(LEGACY_UPREFIX)) n++; } return n; }
+const MIN_PASS = 8;
+const IDLE_DEFAULT = 15;   // minutes; per-account setting in state.settings.idleMins (0 = never)
+const emptyState = () => ({ project: 'Project Management Dashboard', meetings: [], actions: [], attachments: [], settings: { idleMins: IDLE_DEFAULT } });
+const validState = s => !!(s && Array.isArray(s.meetings) && Array.isArray(s.actions));
+const normState = s => {
+  s.attachments = Array.isArray(s.attachments) ? s.attachments : [];
+  s.settings = Object.assign({ idleMins: IDLE_DEFAULT }, s.settings || {});
+  return s;
+};
+let state = emptyState();
+let cryptoKey = null;   // the account's data key (DEK) while signed in
+let acctHdr = null;     // { salt, iter, key } — public KDF params + wrapped DEK for the signed-in account
+
+const rand = n => crypto.getRandomValues(new Uint8Array(n));
+function toB64(buf) { const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf); let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function fromB64(s) { const bin = atob(s); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return u8; }
+async function deriveKey(pass, salt, iter) {   // password → key-encryption key (KEK)
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iter || ITER, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['wrapKey', 'unwrapKey']);
+}
+const newDEK = () => crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+async function wrapDEK(kek, dek) { const iv = rand(12); return { iv: toB64(iv), ct: toB64(await crypto.subtle.wrapKey('raw', dek, kek, { name: 'AES-GCM', iv })) }; }
+const unwrapDEK = (kek, w) => crypto.subtle.unwrapKey('raw', fromB64(w.ct), kek, { name: 'AES-GCM', iv: fromB64(w.iv) }, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+async function encBytes(dek, bytes) { const iv = rand(12); return { iv, ct: await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, dek, bytes) }; }
+const decBytes = (dek, iv, ct) => crypto.subtle.decrypt({ name: 'AES-GCM', iv }, dek, ct);
+async function encJSON(dek, obj) { const r = await encBytes(dek, new TextEncoder().encode(JSON.stringify(obj))); return { iv: toB64(r.iv), ct: toB64(r.ct) }; }
+async function decJSON(dek, e) { return JSON.parse(new TextDecoder().decode(await decBytes(dek, fromB64(e.iv), fromB64(e.ct)))); }
+/** Password + record ({salt, iter, key}) → DEK, or null if the password is wrong. */
+async function openWithPassword(pass, rec) {
+  try { return await unwrapDEK(await deriveKey(pass, fromB64(rec.salt), rec.iter), rec.key); } catch (e) { return null; }
+}
+async function makeHeader(pass, dek) { const salt = rand(16); return { salt: toB64(salt), iter: ITER, key: await wrapDEK(await deriveKey(pass, salt), dek) }; }
+
+function storedEnvelope() { return currentId ? readRec(currentId) : null; }
+let saveChain = Promise.resolve();
+function persist() {
+  if (!cryptoKey || !currentId) return saveChain;
+  const snap = structuredClone(state), dek = cryptoKey, hdr = acctHdr, user = currentUser, id = currentId;
+  saveChain = saveChain.then(async () => localStorage.setItem(recKey(id), JSON.stringify({
+    format: 'pm-dashboard-account', v: 3, kdf: 'PBKDF2-SHA256', cipher: 'AES-256-GCM', ...hdr, data: await encJSON(dek, { u: user, s: snap })
+  }))).catch(e => { console.error(e); toast('Could not save: ' + e.message); });
+  return saveChain;
+}
+
+/* Attachment files: encrypted blobs in IndexedDB, keyed by attachment id. */
+let dbp = null;
+function db() {
+  return dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('pm-dashboard-files', 2);
+    r.onupgradeneeded = () => {   // records are keyed per account ('user/id') so accounts never collide
+      if (r.result.objectStoreNames.contains('files')) r.result.deleteObjectStore('files');
+      r.result.createObjectStore('files', { keyPath: 'key' }).createIndex('user', 'user');
+    };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+}
+async function idb(mode, fn) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const tx = d.transaction('files', mode); let out;
+    const req = fn(tx.objectStore('files')); if (req) req.onsuccess = () => { out = req.result; };
+    tx.oncomplete = () => res(out); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error('Storage aborted (disk full?)'));
+  });
+}
+const fkey = id => currentId + '/' + id;
+const putFile = rec => idb('readwrite', s => s.put({ ...rec, user: currentId, key: fkey(rec.id) }));
+const getFile = id => idb('readonly', s => s.get(fkey(id)));
+const delFile = id => idb('readwrite', s => s.delete(fkey(id)));
+/** Delete every file owned by an owner tag (account ID, or a lower-case username for the older format). */
+const delUserFiles = tag => idb('readwrite', s => { const c = s.index('user').openCursor(IDBKeyRange.only(tag)); c.onsuccess = () => { const k = c.result; if (k) { k.delete(); k.continue(); } }; });
+/** Move files from the older username-tagged format to the opaque account ID. */
+const retagFiles = (oldTag, newId) => idb('readwrite', s => { const c = s.index('user').openCursor(IDBKeyRange.only(oldTag)); c.onsuccess = () => { const k = c.result; if (k) { const v = k.value; s.put({ ...v, user: newId, key: newId + '/' + v.id }); k.delete(); k.continue(); } }; });
+/* Files are padded before encryption so stored sizes only reveal a size bracket, not the real size:
+   64 KB, 128 KB, … 1 MB, then whole MB. The real length is kept inside the encrypted bytes. */
+const padTo = n => { let b = 65536; while (b < n && b < 1048576) b *= 2; return b >= n ? b : Math.ceil(n / 1048576) * 1048576; };
+function padBytes(buf) { const n = buf.byteLength, out = new Uint8Array(padTo(n + 4)); new DataView(out.buffer).setUint32(0, n); out.set(new Uint8Array(buf), 4); return out; }
+function unpadBytes(pt, padded) { if (!padded) return pt; const n = new DataView(pt).getUint32(0); return pt.slice(4, 4 + n); }
+async function encFile(dek, buf) { const r = await encBytes(dek, padBytes(buf)); return { iv: r.iv, data: r.ct, pad: 1 }; }
+async function decFile(dek, rec) { return unpadBytes(await decBytes(dek, rec.iv, rec.data), rec.pad); }
+function save() { render(); persist(); }
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
+/* ---------------- date helpers ---------------- */
+const MS_DAY = 86400000;
+function today() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+function parseISO(s) { if (!s) return null; const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s); return m ? new Date(+m[1], +m[2]-1, +m[3]) : null; }
+function toISO(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+function fmtDate(s, opts) {
+  const d = typeof s === 'string' ? parseISO(s) : s; if (!d) return '—';
+  return d.toLocaleDateString(undefined, opts || { month: 'short', day: 'numeric', year: d.getFullYear() !== today().getFullYear() ? 'numeric' : undefined });
+}
+function daysFromToday(s) { const d = parseISO(s); return d ? Math.round((d - today()) / MS_DAY) : null; }
+/** Free-text date → ISO (handles 2026-11-20, 11/20/2026, 20/11 (if day>12), Nov 20, 20 Nov 2026, "today", "tomorrow", "next Friday") */
+function normalizeDate(str) {
+  if (!str) return '';
+  str = String(str).trim().replace(/(\d)(st|nd|rd|th)\b/gi, '$1').replace(/\.$/, '');
+  if (!str) return '';
+  let m;
+  if ((m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/.exec(str))) return toISO(new Date(+m[1], +m[2]-1, +m[3]));
+  if ((m = /^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?$/.exec(str))) {
+    let a = +m[1], b = +m[2], y = m[3] ? +m[3] : today().getFullYear();
+    if (y < 100) y += 2000;
+    let mo = a, da = b; if (a > 12 && b <= 12) { mo = b; da = a; }
+    return toISO(new Date(y, mo-1, da));
+  }
+  const low = str.toLowerCase();
+  if (low === 'today' || low === 'eod') return toISO(today());
+  if (low === 'tomorrow') return toISO(addDays(today(), 1));
+  const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  if ((m = /^(?:next |this )?(sun|mon|tue|wed|thu|fri|sat)[a-z]*$/.exec(low))) {
+    const target = days.findIndex(d => d.startsWith(m[1]));
+    let diff = (target - today().getDay() + 7) % 7; if (diff === 0) diff = 7;
+    return toISO(addDays(today(), diff));
+  }
+  if ((m = /^next week$/.exec(low))) return toISO(addDays(today(), 7));
+  const hasYear = /\b\d{4}\b/.test(str);
+  const d = new Date(hasYear ? str : str + ' ' + today().getFullYear());
+  if (!isNaN(d)) {
+    // year-less dates that land far in the past most likely mean next year
+    if (!hasYear && (today() - d) / MS_DAY > 120) d.setFullYear(d.getFullYear() + 1);
+    return toISO(d);
+  }
+  return '';
+}
+
+/* ---------------- derived ---------------- */
+function isOverdue(a) { if (a.status === 'Done' || !a.due) return false; return parseISO(a.due) < today(); }
+function meetingById(id) { return state.meetings.find(m => m.id === id); }
+function owners() { return [...new Set(state.actions.map(a => a.owner).filter(Boolean))].sort((a,b) => a.localeCompare(b)); }
+function normStatus(s) {
+  s = String(s || '').toLowerCase();
+  if (/done|complete|closed|finished|resolved|^y(es)?$/.test(s)) return 'Done';
+  if (/progress|started|ongoing|wip|doing/.test(s)) return 'In Progress';
+  return 'Open';
+}
+function normPriority(p) { p = String(p||'').toLowerCase(); if (/high|urgent|critical|^1$|^p1$/.test(p)) return 'High'; if (/low|^3$|^p3$/.test(p)) return 'Low'; return 'Medium'; }
+
+/* ---------------- text utils ---------------- */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function plural(n, w, p) { return n + ' ' + (n === 1 ? w : (p || w + 's')); }
+
+/* ---------------- minutes parsing ---------------- */
+const ACTION_RE = /^\s*(?:[-*•–>\d.)\s]*)?(?:\[\s?\]\s*)?(?:action(?:\s*item)?s?|a\.?i\.?|todo|to-do|follow[- ]?up|task)\s*[:\-–—]\s*(.+)$/i;
+const CHECKBOX_RE = /^\s*[-*]?\s*\[\s?\]\s+(.+)$/;
+const DATE_TOKEN = '(\\d{4}-\\d{1,2}-\\d{1,2}|\\d{1,2}[/.]\\d{1,2}(?:[/.]\\d{2,4})?|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?|\\d{1,2}(?:st|nd|rd|th)?\\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*(?:\\s+\\d{4})?|today|tomorrow|eod|next week|(?:next\\s+|this\\s+)?(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*)';
+
+function parseActionLine(body) {
+  let text = body, owner = '', due = '';
+  let m;
+  const ownerRe = /[\s(\[,;|—–-]*\b(?:owner|assigned to|assignee|responsible|who)\s*[:\-–]?\s*([A-Z][\w.'’-]*(?:\s+[A-Z][\w.'’-]*){0,2})[)\]]?/i;
+  if ((m = ownerRe.exec(text))) { owner = m[1].trim(); text = text.replace(m[0], ' '); }
+  else if ((m = /@([A-Za-z][\w.'’-]*(?:\s+[A-Z][\w.'’-]*)?)/.exec(text))) { owner = m[1].replace(/[.]$/, '').trim(); text = text.replace(m[0], ' '); }
+  const dueRe = new RegExp('[\\s(\\[,;|—–-]*\\b(?:due(?:\\s+date)?|by|deadline|before|on)\\s*[:\\-–]?\\s*' + DATE_TOKEN + '[)\\]]?', 'i');
+  if ((m = dueRe.exec(text))) { due = normalizeDate(m[1]); if (due) text = text.replace(m[0], ' '); }
+  if (!owner && (m = /\s[—–-]\s*([A-Z][a-z'’]+(?:\s+[A-Z][\w'’-]+)?)\s*$/.exec(text))) { owner = m[1]; text = text.slice(0, m.index); }
+  if (!owner && (m = /\(([A-Z][a-z'’]+(?:\s+[A-Z][\w'’-]+)?)\)\s*$/.exec(text))) { owner = m[1]; text = text.slice(0, m.index); }
+  text = text.replace(/\s{2,}/g, ' ').replace(/^[\s,;:|—–-]+|[\s,;:|—–-]+$/g, '').trim();
+  return { text, owner, due };
+}
+/** "@Tom" → "Tom Reed" when exactly one known owner starts with that first name */
+function resolveOwner(name, extra) {
+  if (!name || /\s/.test(name)) return name;
+  const known = [...new Set([...owners(), ...(extra || [])])].filter(o => /\s/.test(o) && o.toLowerCase().startsWith(name.toLowerCase() + ' '));
+  return known.length === 1 ? known[0] : name;
+}
+function extractActions(minutes, attendees) {
+  const att = String(attendees || '').split(/[,;]/).map(s => s.trim()).filter(Boolean);
+  const out = [];
+  String(minutes || '').split(/\r?\n/).forEach(line => {
+    const m = ACTION_RE.exec(line) || CHECKBOX_RE.exec(line);
+    if (m && m[1].trim().length > 2) {
+      const a = parseActionLine(m[1].trim());
+      a.owner = resolveOwner(a.owner, att);
+      if (a.text) out.push(a);
+    }
+  });
+  return out;
+}
+function summarizeMinutes(minutes) {
+  const lines = String(minutes || '').split(/\r?\n/).map(l => l.replace(/^\s*[-*•–>\d.)]+\s*/, '').trim()).filter(Boolean);
+  const decisions = [], risks = [], points = [];
+  for (const l of lines) {
+    if (ACTION_RE.test(l) || CHECKBOX_RE.test(l)) continue;
+    if (/^(attendees|present|agenda|date|time|location|minutes|notes)\s*:?$/i.test(l)) continue;
+    if (/^(attendees|present|absent|apologies)\s*:/i.test(l)) continue;
+    if (/\b(decided|decision|agreed|approved|resolved|confirmed|signed off|go[- ]ahead)\b/i.test(l)) decisions.push(l.replace(/^decisions?\s*[:\-]\s*/i, ''));
+    else if (/\b(risk|issue|blocker|blocked|concern|delay|delayed|escalat|dependency|at risk)\w*/i.test(l)) risks.push(l.replace(/^(risks?|issues?|blockers?)\s*[:\-]\s*/i, ''));
+    else if (l.length > 25 && !/:$/.test(l)) points.push(l);
+  }
+  return { decisions, risks, points };
+}
+
+/* ---------------- file handling ---------------- */
+async function readDocx(file) {
+  const buf = await file.arrayBuffer();
+  const dv = new DataView(buf), u8 = new Uint8Array(buf);
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 66000); i--) { if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; } }
+  if (eocd < 0) throw new Error('Not a valid .docx file');
+  const count = dv.getUint16(eocd + 10, true); let p = dv.getUint32(eocd + 16, true);
+  const dec = new TextDecoder();
+  for (let n = 0; n < count; n++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nlen = dv.getUint16(p + 28, true), elen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true);
+    const loff = dv.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + nlen));
+    if (name === 'word/document.xml') {
+      const start = loff + 30 + dv.getUint16(loff + 26, true) + dv.getUint16(loff + 28, true);
+      const data = u8.slice(start, start + csize);
+      let xml;
+      if (method === 0) xml = dec.decode(data);
+      else xml = await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+      const doc = new DOMParser().parseFromString(xml, 'application/xml');
+      const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+      const paras = [...doc.getElementsByTagNameNS(W, 'p')];
+      return paras.map(pEl => {
+        let t = '';
+        const walk = el => { for (const c of el.childNodes) {
+          if (c.nodeType !== 1) continue;
+          if (c.localName === 't') t += c.textContent;
+          else if (c.localName === 'tab') t += '\t';
+          else if (c.localName === 'br') t += '\n';
+          else if (c.localName !== 'p') walk(c);
+        } };
+        walk(pEl);
+        const isList = pEl.getElementsByTagNameNS(W, 'numPr').length > 0;
+        return (isList && t.trim() ? '- ' : '') + t;
+      }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+    p += 46 + nlen + elen + clen;
+  }
+  throw new Error('Could not find document text in .docx');
+}
+async function readText(file) {
+  if (/\.docx$/i.test(file.name)) return readDocx(file);
+  return file.text();
+}
+function titleFromFilename(name) {
+  return name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').replace(/\b(\d{4}[-_.]\d{2}[-_.]\d{2})\b/, '').replace(/\s{2,}/g, ' ').replace(/^[\s-]+|[\s-]+$/g, '') || 'Meeting';
+}
+function guessDate(name, text) {
+  const s = name + '\n' + String(text).slice(0, 600);
+  let m = /(\d{4}[-_.]\d{1,2}[-_.]\d{1,2})/.exec(s);
+  if (m) return normalizeDate(m[1].replace(/[_.]/g, '-'));
+  m = /\bdate\s*[:\-]\s*([^\n]+)/i.exec(s);
+  if (m) { const d = normalizeDate(m[1].trim().replace(/^\w+day,?\s*/i, '')); if (d) return d; }
+  m = new RegExp('\\b((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+\\d{4})', 'i').exec(s);
+  if (m) return normalizeDate(m[1]);
+  return toISO(today());
+}
+function guessTitle(name, text) {
+  const first = String(text).split(/\r?\n/).map(l => l.trim()).find(Boolean) || '';
+  if (first && first.length < 90 && !/^(date|attendees|action)/i.test(first)) return first.replace(/^#+\s*/, '').replace(/\s*[-–—|]\s*\d{4}-\d{2}-\d{2}$/, '');
+  return titleFromFilename(name);
+}
+function guessAttendees(text) {
+  const m = /^\s*(?:attendees|present|participants)\s*[:\-]\s*(.+)$/im.exec(text);
+  return m ? m[1].trim() : '';
+}
+
+async function handleFiles(files) {
+  for (const f of files) {
+    try {
+      if (/\.json$/i.test(f.name)) await importJson(await f.text());
+      else if (/\.csv$/i.test(f.name)) openCsvPreview(await f.text(), f.name);
+      else if (/\.(txt|md|docx)$/i.test(f.name)) {
+        const text = await readText(f);
+        openMeetingDialog(null, { title: guessTitle(f.name, text), date: guessDate(f.name, text), attendees: guessAttendees(text), minutes: text });
+      } else toast(`${f.name}: to attach a file, drop it onto a meeting (Meetings tab) or an action item (Action Items tab)`);
+    } catch (e) { console.error(e); toast('Could not read ' + f.name + ': ' + e.message); }
+  }
+}
+
+/* CSV */
+function parseCSV(text) {
+  const rows = []; let row = [], cell = '', q = false;
+  text = text.replace(/^﻿/, '');
+  const delim = (text.split('\n')[0].match(/;/g) || []).length > (text.split('\n')[0].match(/,/g) || []).length ? ';' : (text.split('\n')[0].includes('\t') && !text.split('\n')[0].includes(',') ? '\t' : ',');
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i+1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === delim) { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i+1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim()));
+}
+let pendingCsv = [];
+function openCsvPreview(text, name) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) { toast('CSV has no data rows'); return; }
+  const hdr = rows[0].map(h => h.trim().toLowerCase());
+  const find = re => hdr.findIndex(h => re.test(h));
+  const col = {
+    text: find(/action|task|item|description|title|what/),
+    owner: find(/owner|assign|responsible|who|person/),
+    due: find(/due|deadline|target|date/),
+    status: find(/status|state|complete/),
+    priority: find(/priority|severity/),
+    meeting: find(/meeting|source/),
+    notes: find(/note|comment/)
+  };
+  if (col.text < 0) col.text = 0;
+  if (col.meeting === col.text) col.meeting = -1;
+  const get = (r, k) => col[k] >= 0 ? (r[col[k]] || '').trim() : '';
+  pendingCsv = rows.slice(1).map(r => ({
+    text: get(r, 'text'), owner: get(r, 'owner') || 'Unassigned', due: normalizeDate(get(r, 'due')),
+    status: normStatus(get(r, 'status')), priority: normPriority(get(r, 'priority')), meeting: get(r, 'meeting'), notes: get(r, 'notes')
+  })).filter(a => a.text);
+  const mapped = Object.entries(col).filter(([,i]) => i >= 0).map(([k,i]) => `<b>${esc(k)}</b> ← “${esc(rows[0][i])}”`).join(' · ');
+  document.getElementById('csvPreview').innerHTML = `
+    <p class="small muted" style="margin-top:-6px">${esc(name)} — ${plural(pendingCsv.length, 'action item')} found. Column mapping: ${mapped}</p>
+    <div style="max-height:340px;overflow:auto;border:1px solid var(--border);border-radius:8px">
+    <table><thead><tr><th>Action</th><th>Owner</th><th>Due</th><th>Status</th><th>Meeting</th></tr></thead><tbody>
+    ${pendingCsv.slice(0, 50).map(a => `<tr><td>${esc(a.text)}</td><td>${esc(a.owner)}</td><td>${a.due ? fmtDate(a.due) : '<span class="muted">—</span>'}</td><td>${esc(a.status)}</td><td>${esc(a.meeting) || '<span class="muted">—</span>'}</td></tr>`).join('')}
+    </tbody></table></div>
+    ${pendingCsv.length > 50 ? `<p class="small muted">…and ${pendingCsv.length - 50} more</p>` : ''}`;
+  document.getElementById('csvConfirm').textContent = 'Import ' + plural(pendingCsv.length, 'item');
+  document.getElementById('csvDialog').showModal();
+}
+document.getElementById('csvForm').addEventListener('submit', () => {
+  const now = Date.now();
+  for (const a of pendingCsv) {
+    let meetingId = '';
+    if (a.meeting) {
+      let m = state.meetings.find(x => x.title.toLowerCase() === a.meeting.toLowerCase());
+      if (!m) { m = { id: uid(), title: a.meeting, date: toISO(today()), attendees: '', minutes: '', createdAt: now }; state.meetings.push(m); }
+      meetingId = m.id;
+    }
+    state.actions.push({ id: uid(), text: a.text, owner: a.owner, due: a.due, status: a.status, priority: a.priority, meetingId, notes: a.notes, createdAt: now });
+  }
+  toast('Imported ' + plural(pendingCsv.length, 'action item'));
+  pendingCsv = []; save();
+});
+async function importJson(text) {
+  let d = JSON.parse(text), files = {}, fileKey = null;
+  if (d && d.format === 'pm-dashboard-encrypted') {
+    let payload = null, bdek = null;
+    const ok = await askPass({
+      title: 'Open encrypted backup', msg: 'Enter the password of the account that exported this backup (as it was at the time of export).',
+      fields: [{ name: 'p', label: 'Password', ac: 'off' }],
+      validate: async v => {
+        bdek = await openWithPassword(v.p, d);
+        if (!bdek) return 'Incorrect password for this backup';
+        try { payload = await decJSON(bdek, d.data); } catch (e) { return 'This backup file is damaged'; }
+        return '';
+      }
+    });
+    if (!ok) return;
+    d = payload.state; files = payload.files || {}; fileKey = bdek;
+  }
+  if (!validState(d)) throw new Error('not a dashboard backup');
+  normState(d);
+  const replace = !state.meetings.length && !state.actions.length ? true :
+    confirm('Replace current data with this backup?\n\nOK = replace · Cancel = merge into current data');
+  let incoming = d.attachments;
+  if (replace) {
+    const keep = new Set(incoming.map(a => a.id));
+    for (const a of state.attachments) if (!keep.has(a.id)) await delFile(a.id).catch(() => {});
+    state = { project: d.project || state.project, meetings: d.meetings, actions: d.actions, attachments: [] };
+  } else {
+    const ids = new Set([...state.meetings, ...state.actions, ...state.attachments].map(x => x.id));
+    state.meetings.push(...d.meetings.filter(m => !ids.has(m.id)));
+    state.actions.push(...d.actions.filter(a => !ids.has(a.id)));
+    incoming = incoming.filter(a => !ids.has(a.id));
+  }
+  // re-encrypt attached files from the backup's key to this account's key
+  let restored = 0;
+  for (const a of incoming) {
+    const f = files[a.id];
+    if (!f || !fileKey) continue;
+    try {
+      const pt = await decFile(fileKey, { iv: fromB64(f.iv), data: fromB64(f.ct), pad: f.pad });
+      await putFile({ id: a.id, ...(await encFile(cryptoKey, pt)) });
+      state.attachments.push(a); restored++;
+    } catch (e) { console.error(e); }
+  }
+  toast('Backup loaded' + (restored ? ` · ${plural(restored, 'attachment')}` : '')); save();
+}
+function download(name, content, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+const csvCell = v => /[",\n]/.test(String(v ?? '')) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v ?? '');
+
+/* ---------------- UI: tabs, dialogs, toast ---------------- */
+let currentView = 'dashboard';
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => showView(b.dataset.view)));
+function showView(v) {
+  currentView = v;
+  document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
+  document.querySelectorAll('.view').forEach(s => s.hidden = s.id !== 'view-' + v);
+  document.getElementById('tip').classList.remove('on');
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
+let toastTimer;
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2600); }
+
+/* Meeting dialog */
+const mDlg = document.getElementById('meetingDialog'), mForm = document.getElementById('meetingForm');
+function openMeetingDialog(id, prefill) {
+  const m = id ? meetingById(id) : null;
+  mForm.reset();
+  document.getElementById('meetingDialogTitle').textContent = m ? 'Edit meeting' : 'Add meeting minutes';
+  const v = m || prefill || {};
+  mForm.id.value = m ? m.id : '';
+  mForm.title.value = v.title || '';
+  mForm.date.value = v.date || toISO(today());
+  mForm.attendees.value = v.attendees || '';
+  mForm.minutes.value = v.minutes || '';
+  updateDetect();
+  staged.meeting = []; refreshDialogAtts();
+  mDlg.showModal();
+}
+function updateDetect() {
+  const box = document.getElementById('detectBox');
+  const found = extractActions(mForm.minutes.value, mForm.attendees.value);
+  const isEdit = !!mForm.id.value;
+  const existing = isEdit ? state.actions.filter(a => a.meetingId === mForm.id.value) : [];
+  const fresh = found.filter(f => !existing.some(e => e.text.toLowerCase() === f.text.toLowerCase()));
+  if (!fresh.length) { box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = `<b>${plural(fresh.length, 'action item')} detected</b> — will be added on save:
+    <table><thead><tr><th>Action</th><th>Owner</th><th>Due</th></tr></thead><tbody>
+    ${fresh.map(a => `<tr><td>${esc(a.text)}</td><td>${a.owner ? esc(a.owner) : '<span class="overdue-text">Unassigned</span>'}</td><td>${a.due ? fmtDate(a.due) : '<span class="muted">—</span>'}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+let detectTimer;
+mForm.minutes.addEventListener('input', () => { clearTimeout(detectTimer); detectTimer = setTimeout(updateDetect, 250); });
+mForm.addEventListener('submit', e => {
+  if (e.submitter && e.submitter.value === 'cancel') return;
+  const id = mForm.id.value;
+  const data = { title: mForm.title.value.trim(), date: mForm.date.value, attendees: mForm.attendees.value.trim(), minutes: mForm.minutes.value };
+  let m;
+  if (id) { m = meetingById(id); Object.assign(m, data); }
+  else { m = { id: uid(), createdAt: Date.now(), ...data }; state.meetings.push(m); }
+  const existing = state.actions.filter(a => a.meetingId === m.id);
+  const fresh = extractActions(m.minutes, m.attendees).filter(f => !existing.some(x => x.text.toLowerCase() === f.text.toLowerCase()));
+  fresh.forEach(f => state.actions.push({ id: uid(), text: f.text, owner: f.owner || 'Unassigned', due: f.due, status: 'Open', priority: 'Medium', meetingId: m.id, notes: '', createdAt: Date.now() }));
+  toast((id ? 'Meeting updated' : 'Meeting saved') + (fresh.length ? ' · ' + plural(fresh.length, 'action item') + ' added' : ''));
+  save();
+  if (staged.meeting.length) { const files = staged.meeting; staged.meeting = []; addAttachments(files, 'meeting', m.id); }
+});
+document.getElementById('btnLoadMinutesFile').addEventListener('click', () => document.getElementById('minutesFileInput').click());
+document.getElementById('minutesFileInput').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const text = await readText(f);
+    mForm.minutes.value = text;
+    if (!mForm.title.value) mForm.title.value = guessTitle(f.name, text);
+    if (!mForm.id.value) mForm.date.value = guessDate(f.name, text);
+    if (!mForm.attendees.value) mForm.attendees.value = guessAttendees(text);
+    updateDetect();
+  } catch (err) { toast('Could not read file: ' + err.message); }
+});
+
+/* Action dialog */
+const aDlg = document.getElementById('actionDialog'), aForm = document.getElementById('actionForm');
+function openActionDialog(id, meetingId) {
+  const a = id ? state.actions.find(x => x.id === id) : null;
+  aForm.reset();
+  document.getElementById('actionDialogTitle').textContent = a ? 'Edit action item' : 'Add action item';
+  const sel = aForm.meetingId;
+  sel.innerHTML = '<option value="">— None —</option>' + [...state.meetings].sort((x,y) => y.date.localeCompare(x.date)).map(m => `<option value="${esc(m.id)}">${esc(m.title)} (${fmtDate(m.date)})</option>`).join('');
+  aForm.id.value = a ? a.id : '';
+  aForm.text.value = a ? a.text : '';
+  aForm.owner.value = a && a.owner !== 'Unassigned' ? a.owner : '';
+  aForm.due.value = a ? a.due || '' : '';
+  aForm.status.value = a ? a.status : 'Open';
+  aForm.priority.value = a ? a.priority || 'Medium' : 'Medium';
+  aForm.meetingId.value = a ? a.meetingId || '' : (meetingId || '');
+  aForm.notes.value = a ? a.notes || '' : '';
+  staged.action = []; refreshDialogAtts();
+  aDlg.showModal();
+}
+aForm.addEventListener('submit', () => {
+  const data = { text: aForm.text.value.trim(), owner: aForm.owner.value.trim() || 'Unassigned', due: aForm.due.value, status: aForm.status.value, priority: aForm.priority.value, meetingId: aForm.meetingId.value, notes: aForm.notes.value.trim() };
+  const id = aForm.id.value, newId = id || uid();
+  if (id) Object.assign(state.actions.find(x => x.id === id), data);
+  else state.actions.push({ id: newId, createdAt: Date.now(), ...data });
+  if (data.status === 'Done') markCompleted(id ? state.actions.find(x => x.id === id) : state.actions[state.actions.length-1]);
+  toast(id ? 'Action item updated' : 'Action item added');
+  save();
+  if (staged.action.length) { const files = staged.action; staged.action = []; addAttachments(files, 'action', newId); }
+});
+function markCompleted(a) { if (a.status === 'Done' && !a.completedAt) a.completedAt = toISO(today()); if (a.status !== 'Done') delete a.completedAt; }
+
+/* header buttons */
+const fileInput = document.getElementById('fileInput');
+['btnAddMeeting','btnAddMeeting2','btnPasteMinutes'].forEach(id => document.getElementById(id).addEventListener('click', () => openMeetingDialog()));
+['btnAddAction','btnAddAction2'].forEach(id => document.getElementById(id).addEventListener('click', () => openActionDialog()));
+document.getElementById('btnImportCsv').addEventListener('click', () => document.getElementById('csvFileInput').click());
+document.getElementById('csvFileInput').addEventListener('change', e => { handleFiles([...e.target.files]); e.target.value = ''; });
+fileInput.addEventListener('change', e => { handleFiles([...e.target.files]); e.target.value = ''; });
+const dz = document.getElementById('dropzone');
+dz.addEventListener('click', () => fileInput.click());
+dz.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
+// Drop routing: onto a meeting card / action row / dialog attachment zone → attach; elsewhere on the dashboard → import.
+let dragEl = null;
+const dropHost = e => (e.target && e.target.closest) ? e.target.closest('[data-drop-type]') : null;
+function setDrag(el) { if (el === dragEl) return; if (dragEl) dragEl.classList.remove('drop-over'); dragEl = el; if (el) el.classList.add('drop-over'); }
+['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => {
+  e.preventDefault(); if (!cryptoKey) return;
+  const host = dropHost(e); setDrag(host);
+  dz.classList.toggle('over', !host && currentView === 'dashboard' && !document.querySelector('dialog[open]'));
+  if (e.dataTransfer) e.dataTransfer.dropEffect = host || currentView === 'dashboard' ? 'copy' : 'none';
+}));
+document.addEventListener('dragleave', e => { if (e.relatedTarget) return; setDrag(null); dz.classList.remove('over'); });
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const host = dropHost(e); setDrag(null); dz.classList.remove('over');
+  if (!cryptoKey) return;
+  const files = [...e.dataTransfer.files]; if (!files.length) return;
+  if (host) {
+    const t = host.dataset.dropType;
+    if (t.startsWith('staged-')) stageFiles(t.slice(7), files); else addAttachments(files, t, host.dataset.dropId);
+    return;
+  }
+  if (document.querySelector('dialog[open]')) return;
+  if (currentView === 'dashboard') handleFiles(files);
+  else toast('Drop files onto a meeting or an action item to attach them');
+});
+document.getElementById('btnCsvTemplate').addEventListener('click', () => {
+  const nd = toISO(addDays(today(), 7));
+  download('action-items-template.csv', 'Action Item,Owner,Due Date,Status,Priority,Meeting,Notes\n"Send revised timeline to client",Sarah Chen,' + nd + ',Open,High,Weekly status sync,\n"Book venue for workshop",Raj Patel,' + toISO(addDays(today(), 14)) + ',In Progress,Medium,Weekly status sync,\n', 'text/csv');
+});
+document.getElementById('btnExport').addEventListener('click', async () => {
+  if (!cryptoKey) return;
+  const files = {};
+  for (const a of state.attachments) { const r = await getFile(a.id).catch(() => null); if (r) files[a.id] = { iv: toB64(r.iv), ct: toB64(r.data), pad: r.pad || 0 }; }
+  const env = { format: 'pm-dashboard-encrypted', v: 2, kdf: 'PBKDF2-SHA256', cipher: 'AES-256-GCM', ...acctHdr, data: await encJSON(cryptoKey, { state, files }) };
+  download(slug(state.project) + '-' + toISO(today()) + '-encrypted.json', JSON.stringify(env), 'application/json');
+  toast('Encrypted backup downloaded — opening it requires your password');
+});
+document.getElementById('btnExportPlain').addEventListener('click', () => {
+  if (!confirm('This file will NOT be encrypted — anyone who gets it can read all meetings and action items. Attachments are not included (use the encrypted Export for those). Continue?')) return;
+  download(slug(state.project) + '-' + toISO(today()) + '-UNENCRYPTED.json', JSON.stringify({ ...state, attachments: [] }, null, 2), 'application/json');
+});
+document.getElementById('btnMore').addEventListener('click', () => document.getElementById('moreDialog').showModal());
+document.getElementById('btnExportCsv').addEventListener('click', () => {
+  if (!confirm('CSV files cannot be encrypted — anyone who gets this file can read the action items. Continue?')) return;
+  const rows = [['Action Item','Owner','Due Date','Status','Overdue','Priority','Meeting','Meeting Date','Notes']];
+  state.actions.forEach(a => { const m = meetingById(a.meetingId); rows.push([a.text, a.owner, a.due, a.status, isOverdue(a) ? 'Yes' : 'No', a.priority, m ? m.title : '', m ? m.date : '', a.notes]); });
+  download(slug(state.project) + '-action-items.csv', rows.map(r => r.map(csvCell).join(',')).join('\n'), 'text/csv');
+});
+document.getElementById('btnPrint').addEventListener('click', () => { document.getElementById('moreDialog').close(); showView('dashboard'); setTimeout(() => window.print(), 100); });
+document.getElementById('btnSample').addEventListener('click', () => {
+  if ((state.meetings.length || state.actions.length) && !confirm('Add sample data to your current data?')) return;
+  loadSample(); document.getElementById('moreDialog').close(); toast('Sample data loaded');
+});
+document.getElementById('btnClear').addEventListener('click', () => {
+  if (!confirm('Delete ALL meetings and action items? Consider exporting a backup first.')) return;
+  delUserFiles(currentId).catch(() => {});
+  state.meetings = []; state.actions = []; state.attachments = []; document.getElementById('moreDialog').close(); save(); toast('All data cleared');
+});
+const renameProject = () => { const n = prompt('Project name', state.project); if (n && n.trim()) { state.project = n.trim(); save(); } };
+document.getElementById('btnRename').addEventListener('click', () => { document.getElementById('moreDialog').close(); renameProject(); });
+document.getElementById('projectName').addEventListener('click', renameProject);
+document.getElementById('btnTheme').addEventListener('click', () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next; localStorage.setItem(KEY + '-theme', next);
+});
+const savedTheme = localStorage.getItem(KEY + '-theme'); if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project';
+
+/* ---------------- tooltip ---------------- */
+const tip = document.getElementById('tip');
+document.addEventListener('mousemove', e => {
+  const t = e.target.closest && e.target.closest('[data-tip]');
+  document.querySelectorAll('.mark-hover').forEach(x => x.classList.remove('mark-hover'));
+  if (!t) { tip.classList.remove('on'); return; }
+  if (t.dataset.mark) document.querySelectorAll(`[data-mark-id="${t.dataset.mark}"]`).forEach(x => x.classList.add('mark-hover'));
+  tip.innerHTML = t.dataset.tip; tip.classList.add('on');
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 14;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+});
+
+/* ---------------- rendering ---------------- */
+function render() {
+  document.getElementById('projectName').textContent = state.project;
+  document.title = state.project;
+  document.getElementById('todayLabel').textContent = 'Today: ' + today().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) + ' · ' + plural(state.meetings.length, 'meeting') + ' · ' + plural(state.actions.length, 'action item');
+  document.getElementById('ownerList').innerHTML = owners().map(o => `<option value="${esc(o)}">`).join('');
+  renderDashboard(); renderMeetings(); renderActionFilters(); renderActions();
+}
+
+function stats() {
+  const A = state.actions, t = today(), wk = addDays(t, 7);
+  const done = A.filter(a => a.status === 'Done');
+  const active = A.filter(a => a.status !== 'Done');
+  const overdue = active.filter(isOverdue);
+  const dueSoon = active.filter(a => a.due && parseISO(a.due) >= t && parseISO(a.due) <= wk);
+  const inProg = A.filter(a => a.status === 'In Progress');
+  const unassigned = active.filter(a => !a.owner || a.owner === 'Unassigned');
+  const noDate = active.filter(a => !a.due);
+  return { A, done, active, overdue, dueSoon, inProg, unassigned, noDate, pct: A.length ? Math.round(done.length / A.length * 100) : 0 };
+}
+
+function renderDashboard() {
+  const s = stats();
+  // summary narrative
+  const el = document.getElementById('summaryText');
+  if (!state.meetings.length && !state.actions.length) {
+    el.innerHTML = 'No data yet. Upload meeting minutes (.docx, .txt) or an action-item spreadsheet (.csv), or add items directly with the buttons above. Want to see how it works? <a href="#" id="lnkSample">Load sample data</a>.';
+    document.getElementById('lnkSample').onclick = e => { e.preventDefault(); loadSample(); toast('Sample data loaded'); };
+  } else {
+    const ms = [...state.meetings].sort((a,b) => a.date.localeCompare(b.date));
+    const parts = [];
+    if (ms.length) parts.push(`Across <b>${plural(ms.length, 'meeting')}</b>${ms.length > 1 ? ` (${fmtDate(ms[0].date)} – ${fmtDate(ms[ms.length-1].date)})` : ` on ${fmtDate(ms[0].date)}`}, `);
+    parts.push(`<b>${plural(s.A.length, 'action item')}</b> ${ms.length ? 'have' : 'have'} been captured for <b>${plural(owners().filter(o => o !== 'Unassigned').length, 'owner')}</b>. `);
+    if (s.A.length) parts.push(`<b>${s.done.length}</b> ${s.done.length === 1 ? 'is' : 'are'} complete (${s.pct}%), ${s.inProg.length} in progress and ${s.active.length - s.inProg.length} not started. `);
+    if (s.overdue.length) {
+      const byOwner = {}; s.overdue.forEach(a => byOwner[a.owner] = (byOwner[a.owner] || 0) + 1);
+      const ranked = Object.entries(byOwner).sort((a,b) => b[1]-a[1]);
+      const who = ranked.length > 1 && ranked[0][1] > ranked[1][1] ? ` — most with ${esc(ranked[0][0])} (${ranked[0][1]})`
+        : ` (${ranked.slice(0, 4).map(r => esc(r[0]) + (r[1] > 1 ? ' ×' + r[1] : '')).join(', ')}${ranked.length > 4 ? ', …' : ''})`;
+      parts.push(`<span class="overdue-text">⚠ ${plural(s.overdue.length, 'item is', 'items are')} overdue</span>${who}. `);
+    } else if (s.active.length) parts.push(`<span style="color:var(--good-text);font-weight:600">✓ Nothing is overdue.</span> `);
+    const next = s.active.filter(a => a.due && !isOverdue(a)).sort((a,b) => a.due.localeCompare(b.due))[0];
+    if (next) parts.push(`Next deadline: <b>${esc(next.text)}</b> (${esc(next.owner)}, ${relDue(next.due)}). `);
+    if (s.unassigned.length) parts.push(`${plural(s.unassigned.length, 'open item has', 'open items have')} no owner. `);
+    if (s.noDate.length) parts.push(`${plural(s.noDate.length, 'open item has', 'open items have')} no due date.`);
+    const allDec = state.meetings.reduce((n, m) => n + summarizeMinutes(m.minutes).decisions.length, 0);
+    const allRisk = state.meetings.reduce((n, m) => n + summarizeMinutes(m.minutes).risks.length, 0);
+    if (allDec || allRisk) parts.push(` Minutes record ${plural(allDec, 'decision')} and ${plural(allRisk, 'risk/issue', 'risks/issues')}.`);
+    if (state.attachments.length) parts.push(` ${plural(state.attachments.length, 'file is', 'files are')} attached (${fmtSize(state.attachments.reduce((n, a) => n + a.size, 0))}, encrypted).`);
+    el.innerHTML = parts.join('');
+  }
+
+  // KPIs
+  const kpi = (label, value, foot, extra = '', icon = '') => `<div class="card kpi"><div class="label">${icon}${label}</div><div class="value">${value}</div>${extra}<div class="foot">${foot}</div></div>`;
+  const lastM = [...state.meetings].sort((a,b) => b.date.localeCompare(a.date))[0];
+  document.getElementById('kpis').innerHTML =
+    kpi('Meetings', state.meetings.length, lastM ? 'Last: ' + fmtDate(lastM.date) : 'None logged') +
+    kpi('Action items', s.A.length, `${s.active.length} open · ${s.done.length} done`) +
+    kpi('Completion', s.pct + '%', `${s.done.length} of ${s.A.length} complete`, `<div class="meter" role="meter" aria-valuenow="${s.pct}" aria-valuemin="0" aria-valuemax="100"><span style="width:${s.pct}%"></span></div>`) +
+    kpi('Overdue', s.overdue.length, s.overdue.length ? 'Past due and not done' : 'All on track', '', `<span class="dot" style="background:var(--critical)"></span>`) +
+    kpi('Due in next 7 days', s.dueSoon.length, s.dueSoon.length ? 'Through ' + fmtDate(addDays(today(), 7)) : 'Nothing due this week', '', `<span class="dot" style="background:var(--series-1)"></span>`) +
+    kpi('Owners', owners().filter(o => o !== 'Unassigned').length, s.unassigned.length ? `${s.unassigned.length} unassigned` : 'All items assigned');
+
+  renderOwnerChart();
+  renderWeekChart(s);
+
+  // attention list
+  const att = [...s.overdue, ...s.dueSoon].sort((a,b) => a.due.localeCompare(b.due));
+  document.getElementById('attentionList').innerHTML = att.length ? actionMiniTable(att.slice(0, 10)) + (att.length > 10 ? `<p class="small muted"><a href="#" data-goto="active">View all ${att.length} →</a></p>` : '') : '<div class="empty">Nothing overdue or due in the next 7 days 🎉</div>';
+
+  // owner table
+  const ows = ownerRows();
+  document.getElementById('ownerTable').innerHTML = ows.length ? `<table><thead><tr><th>Owner</th><th class="num">Total</th><th class="num">Open</th><th class="num">Overdue</th><th class="num">Done</th><th>Next due</th></tr></thead><tbody>
+    ${ows.map(o => `<tr><td><a href="#" data-owner="${esc(o.owner)}">${esc(o.owner)}</a></td><td class="num">${o.total}</td><td class="num">${o.open}</td><td class="num ${o.overdue ? 'overdue-text' : ''}">${o.overdue}</td><td class="num">${o.done}</td><td>${o.next ? relDue(o.next.due, true) : '<span class="muted">—</span>'}</td></tr>`).join('')}
+    </tbody></table>` : '<div class="empty">No action items yet</div>';
+
+  // recent meetings
+  const rm = [...state.meetings].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 4);
+  document.getElementById('recentMeetings').innerHTML = rm.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">${rm.map(m => meetingCard(m, true)).join('')}</div>` + (state.meetings.length > 4 ? `<p class="small"><a href="#" data-goto-view="meetings">View all ${state.meetings.length} meetings →</a></p>` : '') : '<div class="empty">No meetings yet — drop a minutes file above or click “+ Meeting minutes”.</div>';
+}
+
+function ownerRows() {
+  const map = {};
+  state.actions.forEach(a => {
+    const o = map[a.owner] ||= { owner: a.owner, total: 0, open: 0, overdue: 0, done: 0, next: null };
+    o.total++;
+    if (a.status === 'Done') o.done++;
+    else if (isOverdue(a)) o.overdue++;
+    else o.open++;
+    if (a.status !== 'Done' && a.due && (!o.next || a.due < o.next.due)) o.next = a;
+  });
+  return Object.values(map).sort((a,b) => (b.overdue - a.overdue) || (b.total - a.total) || a.owner.localeCompare(b.owner));
+}
+
+function relDue(due, short) {
+  const d = daysFromToday(due); if (d === null) return '—';
+  const date = fmtDate(due);
+  if (d < 0) return `<span class="overdue-text">${short ? date : date + ' · '}${short ? '' : Math.abs(d) + 'd overdue'}</span>`;
+  if (d === 0) return `<span class="soon-text">${short ? 'Today' : 'due today'}</span>`;
+  if (d === 1) return `<span class="soon-text">${short ? 'Tomorrow' : 'due tomorrow'}</span>`;
+  if (d <= 7) return `<span class="soon-text">${short ? date : date + ' · in ' + d + 'd'}</span>`;
+  return short ? date : date;
+}
+
+function statusPill(a) {
+  if (isOverdue(a)) return `<span class="pill"><span class="dot" style="background:var(--critical)"></span>Overdue</span>`;
+  if (a.status === 'Done') return `<span class="pill"><span class="dot" style="background:var(--good)"></span>Done</span>`;
+  if (a.status === 'In Progress') return `<span class="pill"><span class="dot" style="background:var(--series-1)"></span>In Progress</span>`;
+  return `<span class="pill"><span class="dot" style="background:var(--axis)"></span>Open</span>`;
+}
+
+function actionMiniTable(list) {
+  return `<table><thead><tr><th>Action</th><th>Owner</th><th>Due</th><th></th></tr></thead><tbody>
+  ${list.map(a => `<tr><td>${esc(a.text)}${a.priority === 'High' ? ' <span class="pill small">High</span>' : ''}</td><td>${esc(a.owner)}</td><td style="white-space:nowrap">${relDue(a.due)}</td>
+    <td><button class="btn sm" data-done="${esc(a.id)}" title="Mark done">✓ Done</button></td></tr>`).join('')}
+  </tbody></table>`;
+}
+
+function meetingCard(m, compact) {
+  const sum = summarizeMinutes(m.minutes);
+  const acts = state.actions.filter(a => a.meetingId === m.id);
+  const open = acts.filter(a => a.status !== 'Done').length;
+  const list = (label, arr, n) => arr.length ? `<div class="sec-label">${label}</div><ul>${arr.slice(0, n).map(x => `<li>${esc(x)}</li>`).join('')}${arr.length > n ? `<li class="muted">+${arr.length - n} more</li>` : ''}</ul>` : '';
+  const n = compact ? 3 : 50;
+  const atts = attsFor('meeting', m.id);
+  return `<div class="meeting-card" data-drop-type="meeting" data-drop-id="${esc(m.id)}">
+    <div class="meeting-head"><div class="grow"><h3>${esc(m.title)}</h3>
+    <div class="meta">${fmtDate(m.date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}${m.attendees ? ' · ' + esc(m.attendees) : ''}</div></div>
+    ${compact ? '' : `<button class="icon-btn" data-add-action="${esc(m.id)}" title="Add action item to this meeting">＋</button><button class="icon-btn" data-edit-meeting="${esc(m.id)}" title="Edit">✎</button><button class="icon-btn" data-del-meeting="${esc(m.id)}" title="Delete">🗑</button>`}
+    </div>
+    ${list('Key points', sum.points, compact ? 2 : 50)}
+    ${list('Decisions', sum.decisions, n)}
+    ${list('Risks & issues', sum.risks, n)}
+    <div class="sec-label">Action items · ${acts.length ? `${open} open of ${acts.length}` : 'none'}</div>
+    ${acts.length ? `<ul>${acts.slice(0, compact ? 4 : 100).map(a => `<li>${a.status === 'Done' ? '<s class="muted">' + esc(a.text) + '</s>' : esc(a.text)} <span class="muted">— ${esc(a.owner)}${a.due ? ', ' : ''}</span>${a.due ? relDue(a.due, true) : ''}${isOverdue(a) ? ' <span class="overdue-text small">(overdue)</span>' : ''}</li>`).join('')}${compact && acts.length > 4 ? `<li class="muted">+${acts.length - 4} more</li>` : ''}</ul>` : ''}
+    ${compact ? (atts.length ? `<div class="sec-label">Attachments · ${atts.length}</div><div class="att-list">${attChips(atts.slice(0, 3), { noDelete: true })}${atts.length > 3 ? `<span class="muted small">+${atts.length - 3} more</span>` : ''}</div>` : '')
+      : `<div class="sec-label">Attachments${atts.length ? ' · ' + atts.length : ''}</div><div class="att-list">${attChips(atts)}</div><div class="att-drop sm" tabindex="0" role="button">📎 Drop files on this meeting or <u>browse</u></div>`}
+    ${!compact && m.minutes ? `<details class="minutes"><summary>Full minutes</summary><pre>${esc(m.minutes)}</pre></details>` : ''}
+  </div>`;
+}
+
+/* ---- charts ---- */
+function roundRightPath(x, y, w, h, r) {
+  r = Math.min(r, w, h / 2);
+  return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}Z`;
+}
+function roundTopPath(x, y, w, h, r) {
+  r = Math.min(r, h, w / 2);
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+function niceMax(v) { if (v <= 4) return Math.max(v, 1); const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p; return v; }
+
+function renderOwnerChart() {
+  const host = document.getElementById('ownerChart');
+  let rows = ownerRows().sort((a,b) => b.total - a.total || a.owner.localeCompare(b.owner));
+  if (!rows.length) { host.innerHTML = '<div class="empty">No action items yet</div>'; return; }
+  if (rows.length > 8) {
+    const rest = rows.slice(7);
+    rows = rows.slice(0, 7).concat([{ owner: `Other (${rest.length})`, total: rest.reduce((n,r)=>n+r.total,0), open: rest.reduce((n,r)=>n+r.open,0), overdue: rest.reduce((n,r)=>n+r.overdue,0), done: rest.reduce((n,r)=>n+r.done,0) }]);
+  }
+  const W = 560, L = 120, R = 36, rowH = 30, barH = 16, top = 4;
+  const H = top + rows.length * rowH + 22;
+  const max = niceMax(Math.max(...rows.map(r => r.total)));
+  const sx = v => (v / max) * (W - L - R);
+  const ticks = []; const step = max <= 5 ? 1 : max / 5; for (let v = 0; v <= max + 1e-9; v += step) ticks.push(Math.round(v * 10) / 10);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Stacked bar chart of action items by owner">`;
+  ticks.forEach(v => { const x = L + sx(v); svg += `<line x1="${x}" x2="${x}" y1="${top}" y2="${H - 20}" stroke="var(--grid)" stroke-width="1"/><text x="${x}" y="${H - 6}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${v}</text>`; });
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + (rowH - barH) / 2;
+    const name = r.owner.length > 17 ? r.owner.slice(0, 16) + '…' : r.owner;
+    svg += `<text x="${L - 10}" y="${y + barH / 2 + 4}" text-anchor="end" font-size="12" fill="var(--text-secondary)">${esc(name)}</text>`;
+    const segs = [['done', r.done, 'var(--good)', 'Done'], ['open', r.open, 'var(--series-1)', 'Open · on track'], ['overdue', r.overdue, 'var(--critical)', 'Overdue']].filter(s => s[1] > 0);
+    let x = L;
+    segs.forEach((sg, j) => {
+      const w = sx(sg[1]); const gap = j < segs.length - 1 ? 2 : 0; const ww = Math.max(w - gap, 1);
+      const id = 'o' + i + sg[0];
+      svg += j === segs.length - 1 ? `<path d="${roundRightPath(x, y, ww, barH, 4)}" fill="${sg[2]}" data-mark-id="${id}"/>` : `<rect x="${x}" y="${y}" width="${ww}" height="${barH}" fill="${sg[2]}" data-mark-id="${id}"/>`;
+      svg += `<rect class="hit" x="${x}" y="${y - 6}" width="${Math.max(w, 6)}" height="${barH + 12}" data-mark="${id}" data-tip="${esc(`<b>${esc(r.owner)}</b><br>${sg[3]}: <b>${sg[1]}</b> of ${r.total}`)}"/>`;
+      x += w;
+    });
+    svg += `<text x="${L + sx(r.total) + 6}" y="${y + barH / 2 + 4}" font-size="12" fill="var(--text-primary)" font-weight="600">${r.total}</text>`;
+  });
+  svg += `<line x1="${L}" x2="${L}" y1="${top}" y2="${H - 20}" stroke="var(--axis)" stroke-width="1"/></svg>`;
+  host.innerHTML = svg;
+}
+
+function renderWeekChart(s) {
+  const host = document.getElementById('weekChart');
+  if (!s.active.length) { host.innerHTML = '<div class="empty">No open action items</div>'; return; }
+  const t = today();
+  // week starts Monday
+  const monday = addDays(t, -((t.getDay() + 6) % 7));
+  const buckets = [{ label: 'Overdue', sub: '', items: s.overdue, kind: 'overdue' }];
+  for (let w = 0; w < 6; w++) {
+    const st = addDays(monday, w * 7), en = addDays(st, 6);
+    buckets.push({ label: w === 0 ? 'This wk' : w === 1 ? 'Next wk' : fmtDate(st, { month: 'short', day: 'numeric' }), sub: `${fmtDate(st)} – ${fmtDate(en)}`,
+      items: s.active.filter(a => a.due && !isOverdue(a) && parseISO(a.due) >= st && parseISO(a.due) <= en), kind: 'week' });
+  }
+  const later = addDays(monday, 42);
+  buckets.push({ label: 'Later', sub: 'After ' + fmtDate(addDays(later, -1)), items: s.active.filter(a => a.due && parseISO(a.due) >= later), kind: 'week' });
+  buckets.push({ label: 'No date', sub: 'No due date set', items: s.noDate, kind: 'none' });
+  const W = 560, H = 230, L = 30, R = 8, T = 18, B = 34;
+  const max = niceMax(Math.max(1, ...buckets.map(b => b.items.length)));
+  const bw = (W - L - R) / buckets.length, barW = Math.min(36, bw * 0.6);
+  const sy = v => (v / max) * (H - T - B);
+  const step = max <= 5 ? 1 : max / 5;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Column chart of open action items by due week">`;
+  for (let v = 0; v <= max + 1e-9; v += step) { const y = H - B - sy(v); svg += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="${v === 0 ? 'var(--axis)' : 'var(--grid)'}" stroke-width="1"/><text x="${L - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--text-muted)">${Math.round(v*10)/10}</text>`; }
+  buckets.forEach((b, i) => {
+    const cx = L + bw * i + bw / 2, n = b.items.length, h = sy(n), x = cx - barW / 2, y = H - B - h;
+    const fill = b.kind === 'overdue' ? 'var(--critical)' : b.kind === 'none' ? 'var(--axis)' : 'var(--series-1)';
+    const id = 'w' + i;
+    if (n) svg += `<path d="${roundTopPath(x, y, barW, h, 4)}" fill="${fill}" data-mark-id="${id}"/><text x="${cx}" y="${y - 5}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary)">${n}</text>`;
+    svg += `<text x="${cx}" y="${H - B + 16}" text-anchor="middle" font-size="11" fill="${b.kind === 'overdue' && n ? 'var(--critical)' : 'var(--text-secondary)'}" font-weight="${b.kind === 'overdue' ? 600 : 400}">${esc(b.label)}</text>`;
+    const list = b.items.slice(0, 6).map(a => `• ${esc(a.text.length > 40 ? a.text.slice(0, 39) + '…' : a.text)} <span style="color:var(--text-muted)">(${esc(a.owner)})</span>`).join('<br>');
+    const tipHtml = `<b>${esc(b.label === 'This wk' ? 'This week' : b.label === 'Next wk' ? 'Next week' : b.label)}</b> ${b.sub ? '<span style="color:var(--text-muted)">' + esc(b.sub) + '</span>' : ''}<br>${plural(n, 'open item')}${list ? '<br>' + list : ''}${n > 6 ? '<br>…' : ''}`;
+    svg += `<rect class="hit" x="${cx - bw / 2}" y="${T}" width="${bw}" height="${H - T - B + 20}" data-mark="${id}" data-tip="${esc(tipHtml)}"/>`;
+  });
+  svg += `</svg>`;
+  host.innerHTML = svg;
+}
+
+/* ---- meetings view ---- */
+function renderMeetings() {
+  const q = document.getElementById('meetingSearch').value.trim().toLowerCase();
+  const ms = [...state.meetings].sort((a,b) => b.date.localeCompare(a.date)).filter(m => !q || (m.title + ' ' + m.attendees + ' ' + m.minutes).toLowerCase().includes(q));
+  document.getElementById('meetingList').innerHTML = ms.length ? ms.map(m => meetingCard(m, false)).join('') : `<div class="card empty">${state.meetings.length ? 'No meetings match your search' : 'No meetings yet. Upload a minutes file on the Dashboard or click “+ Meeting minutes”.'}</div>`;
+}
+document.getElementById('meetingSearch').addEventListener('input', renderMeetings);
+
+/* ---- actions view ---- */
+let sortKey = 'due', sortDir = 1;
+function renderActionFilters() {
+  const fo = document.getElementById('fOwner'), fm = document.getElementById('fMeeting');
+  const ov = fo.value, mv = fm.value;
+  fo.innerHTML = '<option value="">All owners</option>' + owners().map(o => `<option>${esc(o)}</option>`).join('');
+  fo.value = owners().includes(ov) ? ov : '';
+  fm.innerHTML = '<option value="">All meetings</option><option value="__none">No meeting</option>' + [...state.meetings].sort((a,b) => b.date.localeCompare(a.date)).map(m => `<option value="${esc(m.id)}">${esc(m.title)} (${fmtDate(m.date)})</option>`).join('');
+  fm.value = mv && (mv === '__none' || meetingById(mv)) ? mv : '';
+}
+function renderActions() {
+  const q = document.getElementById('fSearch').value.trim().toLowerCase();
+  const fo = document.getElementById('fOwner').value, fs = document.getElementById('fStatus').value, fm = document.getElementById('fMeeting').value;
+  let list = state.actions.filter(a => {
+    if (fo && a.owner !== fo) return false;
+    if (fs === 'active' && a.status === 'Done') return false;
+    if (fs === 'overdue' && !isOverdue(a)) return false;
+    if (['Open','In Progress','Done'].includes(fs) && a.status !== fs) return false;
+    if (fm === '__none' && a.meetingId) return false;
+    if (fm && fm !== '__none' && a.meetingId !== fm) return false;
+    if (q) { const m = meetingById(a.meetingId); if (!(a.text + ' ' + a.owner + ' ' + (a.notes || '') + ' ' + (m ? m.title : '')).toLowerCase().includes(q)) return false; }
+    return true;
+  });
+  const pr = { High: 0, Medium: 1, Low: 2 }, st = a => isOverdue(a) ? 0 : a.status === 'In Progress' ? 1 : a.status === 'Open' ? 2 : 3;
+  const key = {
+    due: a => a.due || '9999', text: a => a.text.toLowerCase(), owner: a => a.owner.toLowerCase(), status: st, priority: a => pr[a.priority] ?? 1,
+    meeting: a => { const m = meetingById(a.meetingId); return m ? m.date : '0000'; }
+  }[sortKey];
+  list.sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * sortDir || (a.due || '9999').localeCompare(b.due || '9999'); });
+  document.getElementById('fCount').textContent = `${list.length} of ${state.actions.length}`;
+  const th = (k, label, cls = '') => `<th class="sortable ${cls}" data-sort="${k}">${label}${sortKey === k ? (sortDir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  document.getElementById('actionTable').innerHTML = list.length ? `<table><thead><tr><th style="width:28px"></th>${th('text','Action item')}${th('owner','Owner')}${th('due','Due date')}${th('status','Status')}${th('priority','Priority')}${th('meeting','Meeting')}<th></th></tr></thead><tbody>
+    ${list.map(a => { const m = meetingById(a.meetingId); const atts = attsFor('action', a.id); return `<tr class="${a.status === 'Done' ? 'done-row' : ''}" data-drop-type="action" data-drop-id="${esc(a.id)}">
+      <td><input type="checkbox" data-toggle="${esc(a.id)}" ${a.status === 'Done' ? 'checked' : ''} title="Mark done" aria-label="Mark done"></td>
+      <td><span class="act-text">${esc(a.text)}</span>${a.notes ? `<div class="small muted">${esc(a.notes)}</div>` : ''}${atts.length ? `<div class="att-list">${attChips(atts)}</div>` : ''}</td>
+      <td style="white-space:nowrap">${a.owner === 'Unassigned' ? '<span class="overdue-text">Unassigned</span>' : esc(a.owner)}</td>
+      <td style="white-space:nowrap">${a.due ? (a.status === 'Done' ? fmtDate(a.due) : relDue(a.due)) : '<span class="muted">—</span>'}</td>
+      <td style="white-space:nowrap">${isOverdue(a) ? '<span class="overdue-text small" style="margin-right:4px">⚠</span>' : ''}<select class="status-select" data-status="${esc(a.id)}" aria-label="Status">${['Open','In Progress','Done'].map(s => `<option ${a.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+      <td>${esc(a.priority || 'Medium')}</td>
+      <td class="small">${m ? esc(m.title) + `<div class="muted">${fmtDate(m.date)}</div>` : '<span class="muted">—</span>'}</td>
+      <td style="white-space:nowrap"><button class="icon-btn" data-edit-action="${esc(a.id)}" title="Edit">✎</button><button class="icon-btn" data-del-action="${esc(a.id)}" title="Delete">🗑</button></td>
+    </tr>`; }).join('')}
+    </tbody></table>` : `<div class="empty">${state.actions.length ? 'No action items match these filters' : 'No action items yet. Add one, import a CSV, or upload meeting minutes containing “Action:” lines.'}</div>`;
+}
+['fSearch','fOwner','fStatus','fMeeting'].forEach(id => document.getElementById(id).addEventListener(id === 'fSearch' ? 'input' : 'change', renderActions));
+
+/* ---- delegated clicks ---- */
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-done],[data-edit-action],[data-del-action],[data-edit-meeting],[data-del-meeting],[data-add-action],[data-sort],[data-owner],[data-goto],[data-goto-view]');
+  if (!t) return;
+  const d = t.dataset;
+  if (d.done) { const a = state.actions.find(x => x.id === d.done); a.status = 'Done'; markCompleted(a); save(); toast('Marked done'); }
+  else if (d.editAction) openActionDialog(d.editAction);
+  else if (d.delAction) { const na = attsFor('action', d.delAction).length; if (confirm('Delete this action item?' + (na ? `\n\nIts ${plural(na, 'attachment')} will also be deleted.` : ''))) { removeAttachments(attsFor('action', d.delAction).map(a => a.id)).then(() => { state.actions = state.actions.filter(x => x.id !== d.delAction); save(); }); } }
+  else if (d.editMeeting) openMeetingDialog(d.editMeeting);
+  else if (d.addAction) openActionDialog(null, d.addAction);
+  else if (d.delMeeting) {
+    const n = state.actions.filter(a => a.meetingId === d.delMeeting).length;
+    if (!confirm('Delete this meeting?' + (n ? `\n\nIts ${plural(n, 'action item')} will also be deleted.` : ''))) return;
+    const gone = new Set(state.actions.filter(a => a.meetingId === d.delMeeting).map(a => a.id));
+    const attIds = state.attachments.filter(a => (a.parentType === 'meeting' && a.parentId === d.delMeeting) || (a.parentType === 'action' && gone.has(a.parentId))).map(a => a.id);
+    removeAttachments(attIds).then(() => { state.meetings = state.meetings.filter(m => m.id !== d.delMeeting); state.actions = state.actions.filter(a => a.meetingId !== d.delMeeting); save(); });
+  }
+  else if (d.sort) { if (sortKey === d.sort) sortDir *= -1; else { sortKey = d.sort; sortDir = 1; } renderActions(); }
+  else if (d.owner) { e.preventDefault(); document.getElementById('fOwner').value = d.owner; document.getElementById('fStatus').value = ''; renderActions(); showView('actions'); }
+  else if (d.goto) { e.preventDefault(); document.getElementById('fStatus').value = d.goto; document.getElementById('fOwner').value = ''; renderActions(); showView('actions'); }
+  else if (d.gotoView) { e.preventDefault(); showView(d.gotoView); }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.toggle) { const a = state.actions.find(x => x.id === t.dataset.toggle); a.status = t.checked ? 'Done' : 'Open'; markCompleted(a); save(); }
+  else if (t.dataset.status) { const a = state.actions.find(x => x.id === t.dataset.status); a.status = t.value; markCompleted(a); save(); }
+});
+
+/* ---------------- sample data ---------------- */
+function loadSample() {
+  const d = n => toISO(addDays(today(), n));
+  const m1 = { id: uid(), title: 'Project kickoff', date: d(-28), attendees: 'Sarah Chen, Raj Patel, Maria Lopez, James O’Neill', createdAt: Date.now(),
+    minutes: `Project kickoff
+Date: ${d(-28)}
+Attendees: Sarah Chen, Raj Patel, Maria Lopez, James O’Neill
+
+Reviewed project charter, scope and success criteria with the steering group.
+Agreed on a phased rollout: pilot with two regions before national launch.
+Decided weekly status syncs every Tuesday at 10am.
+Risk: data migration depends on legacy vendor who has not confirmed availability.
+
+Action: Circulate final project charter — Owner: Sarah Chen — Due: ${d(-24)}
+Action: Confirm vendor availability for data migration — Owner: Raj Patel — Due: ${d(-14)}
+Action: Draft communications plan — Owner: Maria Lopez — Due: ${d(-7)}
+Action: Set up project workspace and RAID log @James — by ${d(-21)}` };
+  const m2 = { id: uid(), title: 'Weekly status sync', date: d(-14), attendees: 'Sarah Chen, Raj Patel, Maria Lopez, Priya Nair', createdAt: Date.now(),
+    minutes: `Weekly status sync
+Attendees: Sarah Chen, Raj Patel, Maria Lopez, Priya Nair
+
+Pilot region selection is complete; North and Midlands chosen.
+Budget is tracking 4% under forecast for the quarter.
+Approved the revised communications timeline.
+Issue: test environment has been unstable for three days, blocking UAT preparation.
+
+Action: Escalate test environment stability to IT ops — Owner: Priya Nair — Due: ${d(-10)}
+Action: Prepare UAT scripts for pilot regions — Owner: Raj Patel — Due: ${d(3)}
+Action: Book training rooms for pilot users — Owner: Maria Lopez — Due: ${d(6)}` };
+  const m3 = { id: uid(), title: 'Steering committee review', date: d(-3), attendees: 'Sarah Chen, James O’Neill, Priya Nair, Exec sponsor', createdAt: Date.now(),
+    minutes: `Steering committee review
+Attendees: Sarah Chen, James O’Neill, Priya Nair, Exec sponsor
+
+Presented progress against milestones; overall status Amber due to environment delays.
+Steering committee signed off on the pilot go-live date subject to UAT exit criteria.
+Discussed resourcing for national rollout; two additional analysts requested.
+Concern raised that change-management activity is under-resourced in the Midlands.
+
+Action: Submit resourcing request for two analysts — Owner: James O’Neill — Due: ${d(9)}
+Action: Update RAID log with environment risk and mitigation — Owner: Priya Nair — Due: ${d(1)}
+Action: Present change-management plan for Midlands — Owner: Maria Lopez — Due: ${d(16)}
+Action: Draft go-live readiness checklist — Owner: Sarah Chen — Due: ${d(12)}
+Action: Schedule lessons-learned session after pilot` };
+  state.meetings.push(m1, m2, m3);
+  [m1, m2, m3].forEach(m => extractActions(m.minutes, m.attendees).forEach(f => state.actions.push({ id: uid(), text: f.text, owner: f.owner || 'Unassigned', due: f.due, status: 'Open', priority: 'Medium', meetingId: m.id, notes: '', createdAt: Date.now() })));
+  const set = (txt, patch) => { const a = state.actions.find(x => x.text.startsWith(txt)); if (a) { Object.assign(a, patch); markCompleted(a); } };
+  set('Circulate final project charter', { status: 'Done' });
+  set('Set up project workspace', { status: 'Done', owner: 'James O’Neill' });
+  set('Escalate test environment', { status: 'Done' });
+  set('Prepare UAT scripts', { status: 'In Progress', priority: 'High' });
+  set('Confirm vendor availability', { priority: 'High' });
+  set('Update RAID log', { status: 'In Progress' });
+  state.actions.push({ id: uid(), text: 'Finalize pilot user list', owner: 'Raj Patel', due: d(20), status: 'Open', priority: 'Low', meetingId: '', notes: 'Added directly on dashboard', createdAt: Date.now() });
+  save();
+}
+
+
+/* ---------------- attachments (drag & drop, encrypted) ---------------- */
+const fmtSize = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+const fileIcon = (name, type) => /pdf/i.test(type + name) ? '📕' : /image\//.test(type) ? '🖼' : /sheet|excel|csv|\.xlsx?$/i.test(type + name) ? '📊' : /presentation|powerpoint|\.pptx?$/i.test(type + name) ? '📽' : /word|\.docx?$/i.test(type + name) ? '📄' : '📎';
+const attsFor = (type, id) => state.attachments.filter(a => a.parentType === type && a.parentId === id);
+const staged = { meeting: [], action: [] };   // files dropped into a dialog before the item is saved
+
+async function addAttachments(files, parentType, parentId) {
+  if (!cryptoKey) return 0;
+  let added = 0; const skipped = [];
+  for (const f of files) {
+    if (f.size > MAX_FILE) { skipped.push(f.name + ' (over 25 MB)'); continue; }
+    try {
+      const id = uid();
+      await putFile({ id, ...(await encFile(cryptoKey, await f.arrayBuffer())) });
+      state.attachments.push({ id, parentType, parentId, name: f.name, size: f.size, type: f.type || '', addedAt: Date.now() });
+      added++;
+    } catch (e) { console.error(e); skipped.push(f.name + ' (' + (e.message || 'storage error') + ')'); }
+  }
+  if (added) save();
+  toast((added ? `Attached ${plural(added, 'file')} (encrypted)` : 'No files attached') + (skipped.length ? ' · skipped: ' + skipped.join(', ') : ''));
+  refreshDialogAtts();
+  return added;
+}
+async function openAttachment(id) {
+  const a = state.attachments.find(x => x.id === id); if (!a || !cryptoKey) return;
+  try {
+    const r = await getFile(id); if (!r) throw new Error('file data missing on this device');
+    const pt = await decFile(cryptoKey, r);
+    const url = URL.createObjectURL(new Blob([pt], { type: a.type || 'application/octet-stream' }));
+    const link = Object.assign(document.createElement('a'), { href: url, download: a.name });
+    document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+  } catch (e) { toast('Could not open ' + a.name + ': ' + e.message); }
+}
+async function removeAttachments(ids) {
+  ids = new Set(ids); if (!ids.size) return;
+  for (const id of ids) await delFile(id).catch(() => {});
+  state.attachments = state.attachments.filter(a => !ids.has(a.id));
+}
+function attChips(list, opts = {}) {
+  return list.map(a => `<span class="att-chip"><a href="#" data-att-open="${esc(a.id)}" title="Download ${esc(a.name)}">${fileIcon(a.name, a.type)} ${esc(a.name)}</a><span class="muted">${fmtSize(a.size)}</span>${opts.noDelete ? '' : `<button type="button" class="att-x" data-att-del="${esc(a.id)}" title="Remove attachment" aria-label="Remove ${esc(a.name)}">×</button>`}</span>`).join('');
+}
+function stagedChips(kind) {
+  return staged[kind].map((f, i) => `<span class="att-chip staged"><span>${fileIcon(f.name, f.type)} ${esc(f.name)}</span><span class="muted">${fmtSize(f.size)} · added on save</span><button type="button" class="att-x" data-stage-del="${kind}:${i}" aria-label="Remove ${esc(f.name)}">×</button></span>`).join('');
+}
+function refreshDialogAtts() {
+  const mid = mForm.id.value, aid = aForm.id.value;
+  document.getElementById('mAttList').innerHTML = (mid ? attChips(attsFor('meeting', mid)) : '') + stagedChips('meeting');
+  document.getElementById('aAttList').innerHTML = (aid ? attChips(attsFor('action', aid)) : '') + stagedChips('action');
+}
+function stageFiles(kind, files) {
+  const ok = files.filter(f => f.size <= MAX_FILE), big = files.length - ok.length;
+  const id = kind === 'meeting' ? mForm.id.value : aForm.id.value;
+  if (id) { addAttachments(ok, kind, id); }          // editing an existing item: attach right away
+  else { staged[kind].push(...ok); refreshDialogAtts(); }
+  if (big) toast(`${plural(big, 'file')} over 25 MB skipped`);
+}
+let pickTarget = null;
+const attInput = document.getElementById('attFileInput');
+attInput.addEventListener('change', e => {
+  const files = [...e.target.files]; e.target.value = '';
+  if (!files.length || !pickTarget) return;
+  const t = pickTarget; pickTarget = null;
+  if (t.type.startsWith('staged-')) stageFiles(t.type.slice(7), files); else addAttachments(files, t.type, t.id);
+});
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-att-open],[data-att-del],[data-stage-del],.att-drop');
+  if (!t) return;
+  e.preventDefault(); e.stopPropagation();
+  if (t.dataset.attOpen) openAttachment(t.dataset.attOpen);
+  else if (t.dataset.attDel) {
+    const a = state.attachments.find(x => x.id === t.dataset.attDel);
+    if (a && confirm(`Remove the attachment “${a.name}”?`)) removeAttachments([a.id]).then(() => { save(); refreshDialogAtts(); });
+  }
+  else if (t.dataset.stageDel) { const [k, i] = t.dataset.stageDel.split(':'); staged[k].splice(+i, 1); refreshDialogAtts(); }
+  else { const host = t.closest('[data-drop-type]') || t; pickTarget = { type: host.dataset.dropType, id: host.dataset.dropId }; attInput.click(); }
+}, true);
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('att-drop')) { e.preventDefault(); e.target.click(); } });
+
+/* ---------------- password prompt ---------------- */
+function askPass(opts) {
+  return new Promise(resolve => {
+    const d = document.getElementById('passDialog'), f = document.getElementById('passForm');
+    const err = document.getElementById('passErr'), ok = document.getElementById('passOk');
+    document.getElementById('passTitle').textContent = opts.title;
+    document.getElementById('passMsg').textContent = opts.msg || '';
+    err.textContent = ''; ok.disabled = false; ok.textContent = opts.okLabel || 'OK';
+    document.getElementById('passFields').innerHTML = opts.fields.map(x => `<div class="field"><label>${esc(x.label)}</label><input type="password" name="${x.name}" autocomplete="${x.ac || 'off'}" required></div>`).join('');
+    let done = false;
+    f.onsubmit = async e => {
+      e.preventDefault();
+      const vals = Object.fromEntries(opts.fields.map(x => [x.name, f.elements[x.name].value]));
+      ok.disabled = true; ok.textContent = 'Checking…'; err.textContent = '';
+      const msg = opts.validate ? await opts.validate(vals) : '';
+      ok.disabled = false; ok.textContent = opts.okLabel || 'OK';
+      if (msg) { err.textContent = msg; return; }
+      done = true; d.close(); resolve(vals);
+    };
+    d.onclose = () => { if (!done) resolve(null); };
+    d.showModal();
+    f.querySelector('input').focus();
+  });
+}
+
+document.getElementById('btnChangePass').addEventListener('click', async () => {
+  document.getElementById('moreDialog').close();
+  const v = await askPass({
+    title: 'Change password', okLabel: 'Change password',
+    msg: `Account: ${currentUser}. Your data will be protected by the new password. Backups exported earlier still open with the password that was in use when they were exported.`,
+    fields: [{ name: 'cur', label: 'Current password', ac: 'current-password' }, { name: 'n1', label: `New password (at least ${MIN_PASS} characters)`, ac: 'new-password' }, { name: 'n2', label: 'Confirm new password', ac: 'new-password' }],
+    validate: async v => {
+      if (v.n1.length < MIN_PASS) return `New password must be at least ${MIN_PASS} characters`;
+      if (v.n1 !== v.n2) return 'New passwords do not match';
+      await saveChain;
+      if (!(await openWithPassword(v.cur, storedEnvelope()))) return 'Current password is incorrect';
+      acctHdr = await makeHeader(v.n1, cryptoKey);   // same data key, newly wrapped
+      await persist();
+      return '';
+    }
+  });
+  if (v) toast('Password changed');
+});
+
+/* ---------------- sign in / accounts ---------------- */
+// Authentication = successfully unwrapping the account's data key with a key derived from its password.
+// No password or password hash is stored; a wrong password simply fails AES-GCM authentication.
+let lockMode = 'signin', idleTimer = null;
+const lockEl = document.getElementById('lock'), lockForm = document.getElementById('lockForm');
+const lockUser = document.getElementById('lockUser');
+const lockPass = document.getElementById('lockPass'), lockPass2 = document.getElementById('lockPass2');
+const lockErr = document.getElementById('lockErr'), lockBtn = document.getElementById('lockBtn');
+const USER_RE = /^[A-Za-z0-9._@-]{3,40}$/;
+const legacyData = () => { try { const d = JSON.parse(localStorage.getItem(KEY)); return validState(d) ? d : null; } catch (e) { return null; } };
+const btnLabel = () => lockMode === 'create' ? 'Create account' : 'Sign in';
+
+function showLock(mode, note, username) {
+  lockMode = mode;
+  document.querySelectorAll('dialog[open]').forEach(d => d.close());
+  document.getElementById('tip').classList.remove('on');
+  document.body.classList.add('locked'); lockEl.hidden = false;
+  const create = mode === 'create';
+  document.getElementById('lockTitle').textContent = create ? 'Create an account' : 'Sign in';
+  document.getElementById('lockMsg').textContent = note || (create
+    ? (legacyData() ? 'Your existing dashboard data will move into this account and be encrypted with its password.' : `Choose a username and a password of at least ${MIN_PASS} characters. Your data will be encrypted with this password.`)
+    : 'Sign in to decrypt your meetings and action items.');
+  if (username !== undefined) lockUser.value = username;
+  lockPass.value = ''; lockPass2.value = ''; lockErr.textContent = '';
+  lockPass2.hidden = !create; lockPass2.required = create;
+  lockPass.autocomplete = create ? 'new-password' : 'current-password';
+  lockPass.placeholder = create ? `Password (min ${MIN_PASS} characters)` : 'Password';
+  lockBtn.textContent = btnLabel(); lockBtn.disabled = false;
+  document.getElementById('lockSwitch').textContent = create ? 'Already have an account? Sign in' : 'New here? Create an account';
+  document.getElementById('lockSwitch').hidden = create && accountCount() === 0;
+  document.getElementById('lockReset').hidden = create;
+  setTimeout(() => (lockUser.value ? lockPass : lockUser).focus(), 0);
+}
+function signedIn() {
+  document.body.classList.remove('locked'); lockEl.hidden = true;
+  lockPass.value = ''; lockPass2.value = '';
+  document.getElementById('whoami').textContent = 'Signed in as ' + currentUser;
+  render(); resetIdle();
+}
+function lockNow(note) {
+  clearTimeout(idleTimer);
+  const u = currentUser || '';
+  cryptoKey = null; acctHdr = null; currentUser = null; currentId = null; state = emptyState();
+  document.getElementById('whoami').textContent = '';
+  render();
+  showLock('signin', note, u);
+}
+document.getElementById('lockSwitch').addEventListener('click', () => showLock(lockMode === 'create' ? 'signin' : 'create', '', lockUser.value.trim()));
+lockForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  lockErr.textContent = '';
+  const u = lockUser.value.trim(), p = lockPass.value;
+  if (lockMode === 'create') {
+    if (!USER_RE.test(u)) { lockErr.textContent = 'Username must be 3–40 characters: letters, numbers, . _ @ -'; return; }
+    if (await accountExists(u)) { lockErr.textContent = 'That username is already taken on this device'; return; }
+    if (p.length < MIN_PASS) { lockErr.textContent = `Password must be at least ${MIN_PASS} characters`; return; }
+    if (p !== lockPass2.value) { lockErr.textContent = 'Passwords do not match'; return; }
+  }
+  lockBtn.disabled = true; lockBtn.textContent = lockMode === 'create' ? 'Creating account…' : 'Signing in…';
+  try {
+    if (lockMode === 'create') {
+      const dek = await newDEK();
+      acctHdr = await makeHeader(p, dek); cryptoKey = dek; currentUser = u; currentId = await acctId(u);
+      const legacy = legacyData();
+      state = legacy ? normState(legacy) : emptyState();
+      await persist();
+      if (!readRec(currentId)) throw new Error('Could not save the account');
+      if (legacy) localStorage.removeItem(KEY);   // remove the old unencrypted copy
+      signedIn(); toast('Account created — your data is encrypted');
+    } else {
+      const id = await acctId(u);
+      let env = readRec(id), legacy = false;
+      if (!env) { env = readJSON(legacyKey(u)); legacy = !!env; }
+      let data = null, dek = null, name = u;
+      if (env && env.key) {
+        dek = await openWithPassword(p, env);
+        if (dek) { try { const pl = await decJSON(dek, env.data); if (pl && pl.s) { data = pl.s; name = pl.u || u; } else { data = pl; name = env.username || u; } } catch (err) { data = null; } }
+      } else await deriveKey(p, rand(16), ITER);  // same delay for unknown usernames
+      if (!data) throw new Error('Incorrect username or password');
+      state = validState(data) ? normState(data) : emptyState();
+      cryptoKey = dek; acctHdr = { salt: env.salt, iter: env.iter, key: env.key }; currentUser = name; currentId = id;
+      if (legacy) {   // upgrade an older account: hide its username and re-tag its files
+        await retagFiles(u.toLowerCase(), id);
+        for (const a of state.attachments) {   // re-encrypt older unpadded files so their sizes are hidden too
+          const r = await getFile(a.id).catch(() => null);
+          if (r && !r.pad) { try { await putFile({ id: a.id, ...(await encFile(dek, await decFile(dek, r))) }); } catch (err) { console.error(err); } }
+        }
+        await persist();
+        if (readRec(id)) localStorage.removeItem(legacyKey(u));
+      }
+      signedIn();
+    }
+  } catch (err) {
+    cryptoKey = null; acctHdr = null; currentUser = null; currentId = null;
+    lockErr.textContent = err.message;
+    lockBtn.disabled = false; lockBtn.textContent = btnLabel();
+    lockPass.select();
+  }
+});
+document.getElementById('lockReset').addEventListener('click', async () => {
+  const u = lockUser.value.trim();
+  if (!u) { lockErr.textContent = 'Enter the username of the account to delete'; lockUser.focus(); return; }
+  if (!(await accountExists(u))) { lockErr.textContent = 'No account with that username on this device'; return; }
+  if (!confirm(`Delete the account “${u}” and ALL of its dashboard data on this device?\n\nWithout the password the encrypted data cannot be recovered. Encrypted backups you exported are not affected.`)) return;
+  const id = await acctId(u);
+  localStorage.removeItem(recKey(id)); localStorage.removeItem(legacyKey(u));
+  await delUserFiles(id).catch(() => {}); await delUserFiles(u.toLowerCase()).catch(() => {});
+  showLock(accountCount() ? 'signin' : 'create', `Account “${u}” was deleted.`, '');
+});
+document.getElementById('btnLock').addEventListener('click', () => { lockNow('You have signed out.'); });
+const idleLabel = m => m >= 60 ? plural(m / 60, 'hour') : plural(m, 'minute');
+function resetIdle() {
+  clearTimeout(idleTimer);
+  const mins = state.settings ? state.settings.idleMins : IDLE_DEFAULT;
+  if (cryptoKey && mins > 0) idleTimer = setTimeout(() => lockNow(`Signed out after ${idleLabel(mins)} of inactivity. Your data is saved.`), mins * 60000);
+}
+const idleSel = document.getElementById('idleSelect');
+idleSel.addEventListener('change', () => {
+  state.settings.idleMins = +idleSel.value; save(); resetIdle();
+  toast(+idleSel.value ? `You'll be signed out after ${idleLabel(+idleSel.value)} of inactivity` : 'Automatic sign-out is off — remember to sign out on shared computers');
+});
+document.getElementById('btnMore').addEventListener('click', () => { idleSel.value = String(state.settings.idleMins); });
+['keydown', 'pointerdown', 'wheel', 'mousemove', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { if (cryptoKey) resetIdle(); }, { passive: true }));
+
+/* ---------------- boot ---------------- */
+localStorage.removeItem('pm-dashboard-enc-v1');   // pre-release single-passphrase format (never published)
+if (!window.isSecureContext || !window.crypto || !crypto.subtle) {
+  document.getElementById('lockTitle').textContent = 'Encryption unavailable';
+  document.getElementById('lockMsg').textContent = 'This browser cannot encrypt data on this page. Open the dashboard file in a current version of Microsoft Edge or Google Chrome.';
+  lockForm.querySelectorAll('input, button').forEach(x => x.hidden = true);
+} else {
+  render();
+  showLock(accountCount() ? 'signin' : 'create');
+}
+})();
+</script>
+</body>
+</html>
