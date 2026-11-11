@@ -874,8 +874,21 @@ function leadingOwner(body, people, inSection) {
   return { owner: names.join(' / '), text: m[2].charAt(0).toUpperCase() + m[2].slice(1) };
 }
 /** Re-check owners: split "Ron - task" texts that were logged unassigned, and expand first names to full names. */
+function repairAttendees(m) {
+  const raw = String(m.attendees || '').split(/[,;]/).map(x => x.trim()).filter(Boolean);
+  if (raw.length < 4 || raw.filter(x => !/\s/.test(x)).length < raw.length * 0.4) return false;   // looks fine
+  const emails = state.attachments.filter(a => a.email && a.parentType === 'meeting' && a.parentId === m.id).map(a => a.email);
+  const fromEmails = [...new Set(emails.flatMap(e => [...splitPeople(e.from, true), ...splitPeople(e.to, true), ...splitPeople(e.cc, true)]))];
+  const fromHeader = headerPeople(m.minutes);
+  const fixed = fromEmails.length ? fromEmails : fromHeader;
+  if (fixed.length < raw.length * 0.3) return false;
+  const next = fixed.join('; ');
+  if (next === m.attendees) return false;
+  m.attendees = next; return true;
+}
 function fixOwners(meetingId) {
   let n = 0;
+  for (const m of state.meetings) if ((!meetingId || m.id === meetingId) && repairAttendees(m)) n++;
   for (const a of state.actions) {
     if (meetingId && a.meetingId !== meetingId) continue;
     const people = a.meetingId ? meetingPeople(a.meetingId) : [];
@@ -1459,15 +1472,35 @@ function actionMiniTable(list) {
 }
 
 /* ---- meeting digest: written summary, key talking points, decisions, risks ---- */
-const STOPWORDS = new Set(`a about above after again against all also am an and any are as at be because been before being below between both but by can could did do does doing done down during each few for from further had has have having he her here hers him his how i if in into is it its itself just let me more most my no nor not now of off on once only or other our ours out over own per same she should so some such than that the their theirs them then there these they this those through to too under until up upon us very via was we were what when where which while who whom why will with would you your yours yes please thanks thank hi hello team regards kind best cheers meeting meetings discussed discussion discuss noted note notes agreed agree update updates item items week weeks today tomorrow yesterday next last new well get got make made need needs going shall may might must one two three within across around etc still currently also good great`.split(/\s+/));
+const STOPWORDS = new Set(`a about above after again against all also am an and any are as at be because been before being below between both but by can could did do does doing done down during each few for from further had has have having he her here hers him his how i if in into is it its itself just let me more most my no nor not now of off on once only or other our ours out over own per same she should so some such than that the their theirs them then there these they this those through to too under until up upon us very via was we were what when where which while who whom why will with would you your yours yes please thanks thank hi hello team regards kind best cheers meeting meetings discussed discussion discuss noted note notes agreed agree update updates item items week weeks today tomorrow yesterday next last new well get got make made need needs going shall may might must one two three within across around etc still currently also good great start starts started starting ready expect expected expecting confirm confirmed complete completed track time work working plan planned able like based part take taking provide provided share shared send sent review reviewed call calls thing things way ways`.split(/\s+/));
 const SPECIAL_HEAD = /^(attendees|present|apologies|absent|agenda|date|time|location|minutes|action items?|actions?|next steps|to-?dos?|follow[- ]?ups?|decisions?|key decisions|risks?|issues?|risks? (?:&|and) issues|blockers?|concerns?|next meeting|date of next meeting|aob|any other business)\b/i;
 const digestCache = new Map();
+/* Email clutter that must never become a topic or talking point: signatures, job titles, addresses,
+   contact details, links, disclaimers, Teams join blocks, quoted replies. */
+const JOB_TITLE = /\b(president|vice president|vp|svp|evp|avp|director|manager|managing|head of|lead|analyst|engineer|architect|consultant|specialist|officer|associate|partner|principal|coordinator|administrator|executive|chief|cio|cto|ceo|cfo|coo|pmp|mba|phd)\b/i;
+const JUNK_LINE = /@|https?:\/\/|www\.|mailto:|<[^>]+>|\bunsubscribe\b|\bconfidential\b|\bprivileged\b|\bdisclaimer\b|\bintended recipient\b|\bcaution\b.*\b(external|e-?mail|links?|attachments?)\b|\bexternal (e-?mail|sender|message)\b|\bdo not (click|open)\b|^\[?external\]?$|\bsent from my\b|\bmicrosoft teams\b|\bjoin (the )?meeting\b|\bmeeting id\b|\bpasscode\b|\bdial[- ]?in\b|\bclick here\b|^\+?\d[\d\s().-]{6,}\d$|\b(tel|phone|mobile|cell|fax|office|direct|m|t|o)\s*[:.]\s*\+?\d|\b\d{3}[\s.)-]+\d{3}[\s.-]\d{4}\b|^\d+\s+[\w.'’ ]+\b(way|street|st|avenue|ave|road|rd|drive|dr|boulevard|blvd|lane|ln|plaza|parkway|pkwy|court|ct|place|pl|square|sq|centre|center)\b\.?$|\b(suite|ste|floor|fl)\.?\s*#?\d|\b\d+(st|nd|rd|th)\s+floor\b|^[A-Z0-9]{1,5}(-[A-Z0-9]{1,6}){2,}|\b[A-Z][a-z]+,\s*[A-Z]{2}\s+\d{5}\b/i;
+const SIGNOFF_RE = /^(thanks|thank you|many thanks|thanks again|thanks so much|regards|best|best regards|kind regards|warm regards|warmest regards|cheers|sincerely|respectfully|all the best|thx|ty)[,!.]?\s*(all|team|everyone|again)?[,!.]?\s*$/i;
+/** Text used for summaries: keeps the email header block, drops signatures, footers and earlier replies. */
+function stripForDigest(text) {
+  const lines = String(text || '').replace(/\r/g, '').split('\n'), out = [];
+  let i = 0;
+  while (i < lines.length && (/^\s*(from|to|cc|bcc|sent|date|subject)\s*:/i.test(lines[i]) || (!lines[i].trim() && i < 6))) { out.push(lines[i]); i++; }
+  for (; i < lines.length; i++) {
+    const l = lines[i].trim();
+    if (/^(-{2,}\s*(original|forwarded) message|_{6,}|-{6,}|={6,})/i.test(l) || /^(from|sent)\s*:\s*\S/i.test(l) || /^on .{6,} wrote:$/i.test(l) || /^--\s?$/.test(l)) break;
+    if (SIGNOFF_RE.test(l)) break;
+    if (l && JUNK_LINE.test(l)) continue;
+    out.push(lines[i]);
+  }
+  return out.join('\n');
+}
 function splitSections(text) {
   const raw = String(text || '').replace(/\r/g, '').split('\n'), secs = []; let cur = { title: '', lines: [] };
   const isHead = (l, next) => {
     const t = l.trim(); if (!t || BULLET_RE.test(l)) return false;
     if (/^#{1,6}\s+\S/.test(t)) return true;
     if (/^(from|to|cc|sent|subject|date|attendees|present)\s*:/i.test(t) && !/:$/.test(t)) return false;
+    if (JUNK_LINE.test(t) || JOB_TITLE.test(t) || /,/.test(t.replace(/:$/, ''))) return false;
     if (t.length <= 60 && /:$/.test(t)) return true;
     return t.length <= 50 && !/[.!?,;:)]$/.test(t) && /^[A-Z0-9]/.test(t) && t.split(/\s+/).length <= 7 && !!(next && next.trim());
   };
@@ -1476,20 +1509,27 @@ function splitSections(text) {
   return secs;
 }
 const cleanLine = l => l.replace(BULLET_RE, '').replace(BULLET_RE, '').trim();
-const isNoise = l => !l || l.length < 18 || ACTION_RE.test(l) || CHECKBOX_RE.test(l) || /^(from|to|cc|bcc|sent|subject|date|attendees|present|apologies|absent|location|time)\s*:/i.test(l) || /^(hi|hello|dear|thanks|thank you|regards|kind regards|best|cheers|many thanks)\b/i.test(l) || /^https?:\/\//.test(l);
+const isNoise = l => {
+  if (!l || l.length < 18 || ACTION_RE.test(l) || CHECKBOX_RE.test(l) || JUNK_LINE.test(l)) return true;
+  if (/^(from|to|cc|bcc|sent|subject|date|attendees|present|apologies|absent|location|time)\s*:/i.test(l) || /^(hi|hello|dear|thanks|thank you|regards|kind regards|best|cheers|many thanks|good (morning|afternoon|evening))\b/i.test(l)) return true;
+  const words = l.split(/\s+/), lower = words.filter(w => /^[a-z]/.test(w)).length;
+  if (words.length < 5 || lower < 2 || lower < words.length * 0.25) return true;   // Title-Case labels, names, departments
+  if (JOB_TITLE.test(l) && !/[.!?]$/.test(l) && words.length < 12) return true;   // signature job-title lines
+  return false;
+};
 const stemW = w => w.length > 4 ? w.replace(/(ings?|edly|ed|es|s)$/, '') : w;
 const tokensOf = t => (t.toLowerCase().match(/[a-z][a-z'’-]+/g) || []).filter(w => w.length > 2 && !STOPWORDS.has(w));
 function meetingDigest(m) {
   const text = String(m.minutes || ''), key = (m.title || '') + '\u0000' + text;
   if (digestCache.has(key)) return digestCache.get(key);
-  const secs = splitSections(text), decisions = [], risks = [], cands = [], titleLc = (m.title || '').trim().toLowerCase();
+  const secs = splitSections(stripForDigest(text)), decisions = [], risks = [], cands = [], titleLc = (m.title || '').trim().toLowerCase();
   secs.forEach((sec, si) => {
     const head = sec.title;
     const kind = /^(decisions?|key decisions)\b/i.test(head) ? 'decision' : /^(risks?|issues?|risks? (?:&|and) issues|blockers?|concerns?)\b/i.test(head) ? 'risk' : SPECIAL_HEAD.test(head) ? 'skip' : 'topic';
     const topic = kind === 'topic' && head && head.toLowerCase() !== titleLc ? head : '';
     for (const raw of sec.lines) {
       const l = cleanLine(raw);
-      if (!l || /^(none|n\/a|nothing)\.?$/i.test(l) || kind === 'skip' || ACTION_RE.test(l) || CHECKBOX_RE.test(l)) continue;
+      if (!l || /^(none|n\/a|nothing)\.?$/i.test(l) || kind === 'skip' || ACTION_RE.test(l) || CHECKBOX_RE.test(l) || JUNK_LINE.test(l)) continue;
       if (kind === 'decision') { decisions.push(l.replace(/^decisions?\s*[:\-]\s*/i, '')); continue; }
       if (kind === 'risk') { risks.push(l.replace(/^(risks?|issues?|blockers?)\s*[:\-]\s*/i, '')); continue; }
       if (/^decisions?\s*[:\-]/i.test(l) || /\b(decided|decision|agreed|approved|resolved|signed off|go[- ]ahead)\b/i.test(l)) { decisions.push(l.replace(/^decisions?\s*[:\-]\s*/i, '')); continue; }
@@ -1523,7 +1563,7 @@ function meetingDigest(m) {
 const clip = (t, n) => t.length > n ? t.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : t;
 const quote = (t, n) => '“' + esc(clip(String(t).replace(/[.!?;:]+$/, ''), n)) + '”';
 const listJoin = a => a.length <= 1 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
-const peopleOf = m => String(m.attendees || '').split(/[,;]/).map(x => x.trim()).filter(Boolean);
+const peopleOf = m => splitPeople(m.attendees, true);
 function meetingNarrative(m, d) {
   const people = peopleOf(m), acts = state.actions.filter(a => a.meetingId === m.id), open = acts.filter(a => a.status !== 'Done'), od = acts.filter(isOverdue), atts = attsFor('meeting', m.id), s = [];
   s.push(`<b>${esc(m.title)}</b> took place on ${fmtDate(m.date, { weekday: 'long', month: 'long', day: 'numeric' })}` + (people.length ? ` with ${people.length <= 3 ? esc(listJoin(people)) : esc(people.slice(0, 2).join(', ')) + ` and ${people.length - 2} others`}` : '') + '.');
@@ -1561,11 +1601,10 @@ function meetingDetail(m) {
     <div class="md-head"><div class="grow">
         <div class="md-date">${fmtDate(m.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
         <h2 class="md-title">${esc(m.title)}</h2>
-        ${people.length ? `<div class="md-people">${people.map(x => `<span class="person">${esc(x)}</span>`).join('')}</div>` : ''}
       </div>
       <div class="md-actions"><button class="btn sm" data-add-action="${esc(m.id)}">+ Action item</button><button class="btn sm" data-edit-meeting="${esc(m.id)}">✎ Edit</button><button class="btn sm danger" data-del-meeting="${esc(m.id)}">Delete</button></div>
     </div>
-    <div class="md-stats">${stat('📋', acts.length, 'action item', 'action items')}${acts.length ? `<span class="md-stat"><b>${open}</b> open</span>` : ''}${od ? stat('⚠', od, 'overdue', 'overdue', 'overdue-text') : ''}${stat('✓', d.decisions.length, 'decision', 'decisions')}${stat('⚑', d.risks.length, 'risk / issue', 'risks / issues')}${stat('📎', atts.length, 'file', 'files')}</div>
+    <div class="md-stats">${people.length ? stat('👥', people.length, 'attendee', 'attendees') : ''}${stat('📋', acts.length, 'action item', 'action items')}${acts.length ? `<span class="md-stat"><b>${open}</b> open</span>` : ''}${od ? stat('⚠', od, 'overdue', 'overdue', 'overdue-text') : ''}${stat('✓', d.decisions.length, 'decision', 'decisions')}${stat('⚑', d.risks.length, 'risk / issue', 'risks / issues')}${stat('📎', atts.length, 'file', 'files')}</div>
     <section class="md-sec"><h3>Summary</h3><p class="md-summary">${meetingNarrative(m, d)}</p>${d.themes.length ? `<div class="md-themes"><span class="muted small">Topics</span>${d.themes.map(t => `<span class="theme">${esc(t)}</span>`).join('')}</div>` : ''}</section>
     ${d.points.length ? `<section class="md-sec"><h3>Key talking points</h3><ul class="tp-list">${d.points.map(x => `<li>${x.topic ? `<span class="tp-topic">${esc(x.topic)}</span>` : ''}<span>${esc(x.text)}</span></li>`).join('')}</ul></section>` : ''}
     ${d.decisions.length || d.risks.length ? `<div class="md-cols">
@@ -2318,7 +2357,7 @@ function emailAsMinutes(em) {
 async function emailToMeeting(file) {
   const em = await parseEmail(file);
   const d = em.date ? new Date(em.date) : null;
-  openMeetingDialog(null, { title: (em.subject || 'Email').replace(/^(re|fw|fwd)\s*:\s*/i, ''), date: d && !isNaN(d) ? toISO(d) : toISO(today()), attendees: emailNames(em.from, em.to, em.cc).join(', '), minutes: emailAsMinutes(em) });
+  openMeetingDialog(null, { title: (em.subject || 'Email').replace(/^(re|fw|fwd)\s*:\s*/i, ''), date: d && !isNaN(d) ? toISO(d) : toISO(today()), attendees: emailNames(em.from, em.to, em.cc).join('; '), minutes: emailAsMinutes(em) });
   staged.meeting = [file]; refreshDialogAtts();
   toast('Email loaded — review the meeting and save; the email will be attached');
 }
@@ -2760,7 +2799,7 @@ function signedIn() {
     await scanExisting();
     if (!cryptoKey || currentId !== me) return;
     const n = fixOwners();
-    if (n) { save(); toast(`Updated the owner on ${plural(n, 'action item')} using “Name - task” lines, attendees and email recipients`); }
+    if (n) { save(); toast(`Tidied attendees and action-item owners using “Name - task” lines and email recipients (${plural(n, 'change')})`); }
   }, 400);
 }
 function lockNow(note) {
