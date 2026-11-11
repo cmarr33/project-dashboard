@@ -816,17 +816,89 @@ function parseActionLine(body) {
   text = text.replace(/\s{2,}/g, ' ').replace(/^[\s,;:|—–-]+|[\s,;:|—–-]+$/g, '').trim();
   return { text, owner, due };
 }
+/* ---- people directory: attendees + email From/To/Cc → full names ---- */
+const capWord = w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+function nameFromAddr(x) {   // ron.farrell@contoso.com → Ron Farrell
+  const m = /([A-Za-z0-9._%+-]+)@/.exec(x || ''); if (!m) return '';
+  const parts = m[1].split(/[._-]+/).filter(q => /^[a-z]{2,}$/i.test(q));
+  return parts.length >= 2 ? parts.slice(0, 2).map(capWord).join(' ') : '';
+}
+function normPerson(x) {
+  x = String(x || '').trim(); if (!x) return '';
+  const addr = (/<([^>]+)>/.exec(x) || [])[1] || (x.includes('@') && !/\s/.test(x) ? x : '');
+  let name = x.replace(/<[^>]*>/, '').replace(/^["']|["']$/g, '').replace(/^mailto:/i, '').trim();
+  if (!name || name.includes('@')) name = nameFromAddr(addr || name);
+  const lf = /^([A-Z][\w'’-]+),\s*([A-Z][\w'’-]+(?:\s+[A-Z]\.?)?)$/.exec(name);   // Outlook "Farrell, Ron"
+  if (lf) name = lf[2] + ' ' + lf[1];
+  return name.replace(/\s*\([^)]*\)\s*$/, '').replace(/\s*\[[^\]]*\]\s*$/, '').replace(/\s+/g, ' ').trim();
+}
+/** Split a recipient / attendee list. ";" lists may contain "Last, First" names; "," lists respect quotes. */
+function splitPeople(str, loose) {
+  str = String(str || ''); if (!str.trim()) return [];
+  const single = /^\s*"?[A-Z][\w'’-]+,\s*[A-Z][\w'’-]+(?:\s+[A-Z]\.?)?"?\s*(?:<[^>]*>)?\s*$/.test(str);   // one "Last, First" person
+  const parts = single ? [str] : str.includes(';') ? str.split(';') : str.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+  return parts.map(normPerson).filter(n => n && (loose || /\s/.test(n)));
+}
+function headerPeople(text) {   // From: / To: / Cc: lines (e.g. minutes created from an email)
+  const out = []; String(text || '').replace(/^\s*(?:from|to|cc)\s*:\s*(.+)$/gim, (m0, v) => { out.push(...splitPeople(v)); return m0; });
+  return out;
+}
+function meetingPeople(meetingId) {
+  const m = meetingById(meetingId); if (!m) return [];
+  const actIds = new Set(state.actions.filter(a => a.meetingId === meetingId).map(a => a.id));
+  const emails = state.attachments.filter(a => a.email && ((a.parentType === 'meeting' && a.parentId === meetingId) || (a.parentType === 'action' && actIds.has(a.parentId)))).map(a => a.email);
+  return [...new Set([...splitPeople(m.attendees), ...headerPeople(m.minutes), ...emails.flatMap(e => [...splitPeople(e.from), ...splitPeople(e.to), ...splitPeople(e.cc)])])];
+}
+/** "Ron" → "Ron Farrell"; "Jon / Brian" → "Jon White / Brian Fanning" when each first name matches exactly one person. */
+function resolveOne(n, people) {
+  n = n.trim(); if (!n || /\s/.test(n)) return n;
+  const lc = n.toLowerCase(), pool = [...new Set([...(people || []), ...owners().filter(o => !o.includes('/'))])].filter(o => /\s/.test(o));
+  let c = pool.filter(o => o.toLowerCase().startsWith(lc + ' '));
+  if (!c.length && n.length >= 3) c = pool.filter(o => o.toLowerCase().split(' ')[0].startsWith(lc));   // Jon → Jonathan
+  return c.length === 1 ? c[0] : n;
+}
+function resolveOwners(owner, people) {
+  if (!owner || owner === 'Unassigned') return owner;
+  const parts = owner.split(/\s*(?:\/|&|\+|\band\b)\s*/).filter(Boolean);
+  return parts.length ? parts.map(q => resolveOne(q, people)).join(' / ') : owner;
+}
+/* "Ron - Send the deck", "Jon / Brian - Book the venue", "Ron: update the plan" */
+const NOT_NAME = /^(all|team|everyone|everybody|tbc|tbd|budget|review|update|updates|follow|next|send|draft|plan|action|actions|item|items|note|notes|owner|due|status|decision|decisions|risk|risks|issue|issues|pm|pmo|it|hr|finance|legal|vendor|client|phase|step|task|tasks|done|open|closed|complete|agenda|summary|background|subject|from|to|cc|sent|date|attendees)$/i;
+const LEAD_RE = /^((?:[A-Z][a-z'’]+|[A-Z]{2,4})(?:\s+[A-Z][a-z'’-]+)?(?:\s*(?:\/|&|\+|,|\band\b)\s*(?:[A-Z][a-z'’]+|[A-Z]{2,4})(?:\s+[A-Z][a-z'’-]+)?)*)(?:\s+[-–—]|\s*:)\s+(\S.{2,})$/;
+function leadingOwner(body, people, inSection) {
+  const m = LEAD_RE.exec(body); if (!m) return null;
+  const names = m[1].split(/\s*(?:\/|&|\+|,|\band\b)\s*/).filter(Boolean);
+  if (names.some(n => NOT_NAME.test(n.split(' ')[0]))) return null;
+  const known = n => (people || []).some(q => { const a = q.toLowerCase(), b = n.toLowerCase(); return a === b || a.startsWith(b + ' ') || a.split(' ')[0].startsWith(b); }) || owners().some(o => o.toLowerCase().split(/\s*\/\s*/).some(x => x === n.toLowerCase() || x.startsWith(n.toLowerCase() + ' ')));
+  if (!inSection && !names.some(known)) return null;
+  return { owner: names.join(' / '), text: m[2].charAt(0).toUpperCase() + m[2].slice(1) };
+}
+/** Re-check owners: split "Ron - task" texts that were logged unassigned, and expand first names to full names. */
+function fixOwners(meetingId) {
+  let n = 0;
+  for (const a of state.actions) {
+    if (meetingId && a.meetingId !== meetingId) continue;
+    const people = a.meetingId ? meetingPeople(a.meetingId) : [];
+    if (!a.owner || a.owner === 'Unassigned') {
+      const lo = leadingOwner(a.text, people, !!(a.source || a.meetingId));
+      if (lo) { a.owner = lo.owner; a.text = lo.text; n++; }
+    }
+    if (a.owner && a.owner !== 'Unassigned') { const r = resolveOwners(a.owner, people); if (r !== a.owner) { a.owner = r; n++; } }
+  }
+  return n;
+}
 /** "@Tom" → "Tom Reed" when exactly one known owner starts with that first name */
 function resolveOwner(name, extra) {
   if (!name || /\s/.test(name)) return name;
   const known = [...new Set([...owners(), ...(extra || [])])].filter(o => /\s/.test(o) && o.toLowerCase().startsWith(name.toLowerCase() + ' '));
   return known.length === 1 ? known[0] : name;
 }
-function extractActions(minutes, attendees) {
+function extractActions(minutes, attendees, meetingId) {
   // "Action:" lines, items under an "Action items" / "Next steps" heading, and Action | Owner | Due tables
-  const items = findActionItems(minutes);
-  const att = String(attendees || '').split(/[,;]/).map(s => s.trim()).filter(Boolean).concat(items.map(i => i.owner).filter(o => o && /\s/.test(o)));
-  return items.map(a => ({ ...a, owner: resolveOwner(a.owner, att) }));
+  const people = [...new Set([...splitPeople(attendees), ...headerPeople(minutes), ...(meetingId ? meetingPeople(meetingId) : [])])];
+  const items = findActionItems(minutes, people);
+  const all = people.concat(items.map(i => i.owner).filter(o => o && /\s/.test(o) && !o.includes('/')));
+  return items.map(a => ({ ...a, owner: resolveOwners(a.owner, all) }));
 }
 function summarizeMinutes(minutes) {
   if (typeof meetingDigest === 'function') { const d = meetingDigest({ title: '', minutes }); return { decisions: d.decisions, risks: d.risks, points: d.points.map(x => x.text) }; }
@@ -1084,7 +1156,7 @@ function openMeetingDialog(id, prefill) {
 }
 function updateDetect() {
   const box = document.getElementById('detectBox');
-  const found = extractActions(mForm.minutes.value, mForm.attendees.value);
+  const found = extractActions(mForm.minutes.value, mForm.attendees.value, mForm.id.value || null);
   const isEdit = !!mForm.id.value;
   const existing = isEdit ? state.actions.filter(a => a.meetingId === mForm.id.value) : [];
   const fresh = found.filter(f => !existing.some(e => e.text.toLowerCase() === f.text.toLowerCase()));
@@ -1105,10 +1177,11 @@ mForm.addEventListener('submit', e => {
   if (id) { m = meetingById(id); Object.assign(m, data); }
   else { m = { id: uid(), createdAt: Date.now(), ...data }; state.meetings.push(m); }
   const existing = state.actions.filter(a => a.meetingId === m.id);
-  const fresh = extractActions(m.minutes, m.attendees).filter(f => !existing.some(x => x.text.toLowerCase() === f.text.toLowerCase()));
+  const fresh = extractActions(m.minutes, m.attendees, m.id).filter(f => !existing.some(x => x.text.toLowerCase() === f.text.toLowerCase()));
   fresh.forEach(f => { const a = { id: uid(), text: f.text, owner: f.owner || 'Unassigned', due: f.due, status: f.done ? 'Done' : 'Open', priority: 'Medium', meetingId: m.id, notes: '', createdAt: Date.now() }; markCompleted(a); state.actions.push(a); });
   toast((id ? 'Meeting updated' : 'Meeting saved') + (fresh.length ? ' · ' + plural(fresh.length, 'action item') + ' added' : ''));
   save();
+  if (fixOwners(m.id)) save();
   if (staged.meeting.length) { const files = staged.meeting; staged.meeting = []; addAttachments(files, 'meeting', m.id); }
 });
 document.getElementById('btnLoadMinutesFile').addEventListener('click', () => document.getElementById('minutesFileInput').click());
@@ -2235,7 +2308,7 @@ async function parseEmail(file) {
   const u = new Uint8Array(buf, 0, Math.min(8, buf.byteLength));
   return (u[0] === 0xD0 && u[1] === 0xCF) ? parseMsg(buf) : parseEml(buf);
 }
-const emailNames = (...lists) => [...new Set(lists.join(';').split(/[;,](?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x => x.trim().replace(/<[^>]*>/, '').replace(/^"|"$/g, '').trim() || x.trim()).filter(Boolean))];
+const emailNames = (...lists) => [...new Set(lists.flatMap(l => splitPeople(l, true)))];
 const emailMeta = em => ({ subject: em.subject || '', from: em.from || '', to: em.to || '', cc: em.cc || '', date: em.date || '', snippet: (em.body || '').slice(0, 280) });
 const emailDateLabel = iso => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); };
 function emailAsMinutes(em) {
@@ -2285,17 +2358,20 @@ function mapActCols(cells) {
   if (col.text < 0 || (col.owner < 0 && col.due < 0)) return null;
   return col;
 }
-function lineToItem(raw) {
+function lineToItem(raw, people, inSection) {
   const done = DONE_RE.test(raw);
   let body = raw.replace(BULLET_RE, '').replace(BULLET_RE, '').replace(/\s*\((?:done|completed|closed)\)\s*$/i, '').trim();
   const m = ACTION_RE.exec(body); if (m) body = m[1].trim();
   if (body.length < 4 || /^(none|n\/a|tbc|tbd|no (?:new )?actions?)\.?$/i.test(body)) return null;
+  const lead = leadingOwner(body, people, inSection);   // "Ron - Send the deck", "Jon / Brian - Book the venue"
+  if (lead) body = lead.text;
   let { text, owner, due } = parseActionLine(body), mm;
+  if (lead) owner = lead.owner;
   if (!owner && (mm = /^([A-Z][a-z'’]+(?:\s+[A-Z][a-z'’-]+)?)\s+(?:to|will|should|must|needs? to)\s+(.{3,})$/.exec(text))) { owner = mm[1]; text = mm[2].charAt(0).toUpperCase() + mm[2].slice(1); }
   if (!text || text.length < 3) return null;
   return { text: text.replace(/[.;,]\s*$/, ''), owner, due, done };
 }
-function findActionItems(text) {
+function findActionItems(text, people) {
   const lines = String(text || '').replace(/\r/g, '').split('\n');
   const items = []; let inSec = false, table = null, blank = false;
   for (const raw of lines) {
@@ -2315,10 +2391,10 @@ function findActionItems(text) {
     if (inSec) {
       const bullet = BULLET_RE.test(raw);
       if (!bullet && (SECTION_END_RE.test(l) || (blank && /:$/.test(l) && l.length < 60))) inSec = false;
-      else { const it = lineToItem(raw); if (it) items.push(it); blank = false; continue; }
+      else { const it = lineToItem(raw, people, true); if (it) items.push(it); blank = false; continue; }
     }
     const m = ACTION_RE.exec(l) || CHECKBOX_RE.exec(l);
-    if (m && m[1].trim().length > 2) { const it = lineToItem(m[1]); if (it) items.push(it); }
+    if (m && m[1].trim().length > 2) { const it = lineToItem(m[1], people, true); if (it) items.push(it); }
     blank = false;
   }
   const seen = new Set();
@@ -2423,18 +2499,23 @@ async function textForScan(name, type, buf) {
 /* ---- logging & summaries ---- */
 function logExtracted(att, items) {
   const meetingId = att.parentType === 'meeting' ? att.parentId : ((state.actions.find(a => a.id === att.parentId) || {}).meetingId || '');
-  const m = meetingById(meetingId), people = (m ? String(m.attendees || '').split(/[,;]/).map(x => x.trim()).filter(Boolean) : []).concat(items.map(i => i.owner).filter(o => o && /\s/.test(o)));
+  const people = [...new Set([...meetingPeople(meetingId), ...(att.email ? [...splitPeople(att.email.from), ...splitPeople(att.email.to), ...splitPeople(att.email.cc)] : []), ...items.map(i => i.owner).filter(o => o && /\s/.test(o) && !o.includes('/'))])];
   const existing = new Set(state.actions.map(a => a.text.toLowerCase())), ids = [];
   for (const it of items) {
     const k = it.text.toLowerCase(); if (existing.has(k)) continue; existing.add(k);
-    const a = { id: uid(), text: it.text, owner: resolveOwner(it.owner, people) || 'Unassigned', due: it.due || '', status: it.done ? 'Done' : 'Open', priority: 'Medium', meetingId, notes: 'From attachment: ' + att.name, source: { attachmentId: att.id }, createdAt: Date.now() };
+    const a = { id: uid(), text: it.text, owner: resolveOwners(it.owner, people) || 'Unassigned', due: it.due || '', status: it.done ? 'Done' : 'Open', priority: 'Medium', meetingId, notes: 'From attachment: ' + att.name, source: { attachmentId: att.id }, createdAt: Date.now() };
     markCompleted(a); state.actions.push(a); ids.push(a.id);
   }
   att.scan = { at: Date.now(), found: items.length, actionIds: ids };
   return ids.length;
 }
 async function scanAttachment(att, buf) {
-  try { const text = await textForScan(att.name, att.type, buf); return logExtracted(att, text ? findActionItems(text) : []); }
+  try {
+    const text = await textForScan(att.name, att.type, buf);
+    const mid = att.parentType === 'meeting' ? att.parentId : ((state.actions.find(a => a.id === att.parentId) || {}).meetingId || '');
+    const people = [...meetingPeople(mid), ...(att.email ? [...splitPeople(att.email.from), ...splitPeople(att.email.to), ...splitPeople(att.email.cc)] : [])];
+    return logExtracted(att, text ? findActionItems(text, people) : []);
+  }
   catch (e) { console.warn('could not scan', att.name, e); att.scan = { at: Date.now(), found: 0, actionIds: [], error: String(e.message || e) }; return 0; }
 }
 let scanning = false;
@@ -2520,7 +2601,11 @@ async function addAttachments(files, parentType, parentId) {
       added++;
     } catch (e) { console.error(e); skipped.push(f.name + ' (' + (e.message || 'storage error') + ')'); }
   }
-  if (added) save();
+  if (added) {
+    const mid = parentType === 'meeting' ? parentId : ((state.actions.find(a => a.id === parentId) || {}).meetingId || '');
+    if (mid) fixOwners(mid);
+    save();
+  }
   toast((added ? `Attached ${plural(added, 'file')} (encrypted)` : 'No files attached') + (logged ? ` · ${plural(logged, 'action item')} found and logged` : '') + (skipped.length ? ' · skipped: ' + skipped.join(', ') : ''));
   refreshDialogAtts();
   return added;
@@ -2670,7 +2755,13 @@ function signedIn() {
   lockPass.value = ''; lockPass2.value = '';
   document.getElementById('whoami').textContent = 'Signed in as ' + currentUser;
   render(); resetIdle();
-  setTimeout(scanExisting, 400);
+  setTimeout(async () => {
+    const me = currentId;
+    await scanExisting();
+    if (!cryptoKey || currentId !== me) return;
+    const n = fixOwners();
+    if (n) { save(); toast(`Updated the owner on ${plural(n, 'action item')} using “Name - task” lines, attendees and email recipients`); }
+  }, 400);
 }
 function lockNow(note) {
   clearTimeout(idleTimer);
