@@ -5,7 +5,7 @@ A single-page dashboard for uploading meeting minutes and action items (owners, 
 - Upload minutes (.docx, .txt, .md), action items (.csv) or an encrypted backup (.json), or enter items directly.
 - Drag and drop attachments (slides, PDFs, spreadsheets, images — up to 25 MB each) onto meetings and action items.
 - Drag emails straight from classic Outlook (.msg/.eml): attach them, or turn one into a meeting.
-- Project Plan tab: import Excel (.xlsx), CSV or Microsoft Project XML; track % complete and tasks approaching their due date.
+- Project Plan tab: import Excel (.xlsx), CSV or Microsoft Project XML in any column layout (columns detected by heading or content, with a column-mapping step); track % complete and tasks approaching their due date.
 - Action items inside attached Word, PowerPoint, Excel, PDF, text and email files are found and logged automatically.
 - Meetings tab with a written summary, topics and key talking points for each meeting.
 - Username/password accounts. Each account's data and attachments are encrypted in the browser with AES-256-GCM

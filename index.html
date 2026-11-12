@@ -211,6 +211,10 @@ dialog h2 { margin: 0 0 14px; font-size: 17px; }
 .mc-stats { font-size: 12px; color: var(--text-secondary); margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--grid); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 @media (max-width: 900px) { .mt-layout { grid-template-columns: 1fr; } .mt-list { position: static; max-height: 260px; } .md-cols { grid-template-columns: 1fr; } }
 /* project plan */
+.pm-box { overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+.pm-box table td, .pm-box table th { padding: 5px 8px; }
+.pm-box select { border: 1px solid var(--border); background: var(--surface-1); border-radius: 6px; padding: 3px 6px; font-size: 12px; }
+tr.pm-ignored td { color: var(--text-muted); }
 .plan-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .pbar { display: inline-block; width: 64px; height: 6px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--border); vertical-align: middle; overflow: hidden; }
 .pbar > span { display: block; height: 100%; background: var(--series-1); border-radius: 3px; }
@@ -430,7 +434,7 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
         <strong>Drop your project plan here</strong> or click to upload
         <div class="types">Excel (.xlsx), CSV, or Microsoft Project XML (.xml) &nbsp;·&nbsp; Microsoft Project .mpp or old .xls: in Project/Excel use File → Save As → XML or Excel Workbook (.xlsx) first</div>
       </div>
-      <p class="muted small" style="margin:12px 0 0">The plan needs a task-name column. Start, Finish, % Complete, Resource/Owner, Outline Level or WBS columns are picked up automatically when present. <a href="#" id="planTemplate">Download a template</a> · <a href="#" id="planBlank">Start an empty plan</a></p>
+      <p class="muted small" style="margin:12px 0 0">Any layout works — no particular column is required. Task name, Start, Finish, % Complete, Resource/Owner, Outline Level, WBS, Duration and Status are recognised by their headings or their contents, and you can check or change each column before importing. <a href="#" id="planTemplate">Download a template</a> · <a href="#" id="planBlank">Start an empty plan</a></p>
     </div>
     <div id="planBody" hidden>
       <div class="plan-head">
@@ -563,6 +567,27 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
   </form>
 </dialog>
 
+<!-- Project plan column mapping -->
+<dialog id="planMapDialog" style="width:min(1000px,96vw)">
+  <form method="dialog" id="planMapForm">
+    <h2 style="margin-bottom:4px">Map your project plan columns</h2>
+    <p class="muted small" style="margin:0 0 4px" id="pmFile"></p>
+    <p class="small" style="margin:0 0 10px" id="pmHint"></p>
+    <div class="filters" style="margin-bottom:10px">
+      <span id="pmSheetWrap"><label class="small muted" for="pmSheet">Sheet</label> <select id="pmSheet"></select></span>
+      <label class="small muted" for="pmHeader">Header row</label> <select id="pmHeader" style="max-width:520px"></select>
+    </div>
+    <div class="pm-box" style="max-height:32vh"><table id="pmCols"></table></div>
+    <div class="sec-label" style="margin-top:14px">Preview <span id="pmCount" class="muted"></span></div>
+    <div class="pm-box" style="max-height:28vh"><table id="pmPreview"></table></div>
+    <div class="lock-err" id="pmErr"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn primary" id="pmImport">Import</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- Project plan task -->
 <dialog id="planDialog">
   <form method="dialog" id="planForm">
@@ -620,7 +645,7 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
 <input type="file" id="minutesFileInput" accept=".txt,.md,.docx" hidden>
 <input type="file" id="csvFileInput" accept=".csv" hidden>
 <input type="file" id="attFileInput" multiple hidden>
-<input type="file" id="planFileInput" accept=".xlsx,.xlsm,.csv,.xml,.xls,.mpp" hidden>
+<input type="file" id="planFileInput" accept=".xlsx,.xlsm,.csv,.txt,.xml,.xls,.mpp" hidden>
 <div class="tip" id="tip"></div>
 <div class="toast" id="toast"></div>
 
@@ -2000,39 +2025,180 @@ function mapPlanColumns(hdr) {
   }
   return col;
 }
-function rowsToTasks(rows, indents) {
-  let hi = -1, col = null;
-  for (let r = 0; r < Math.min(rows.length, 25); r++) {
-    const hdr = (rows[r] || []).map(v => typeof v === 'string' ? v.trim() : '');
-    const c = mapPlanColumns(hdr);
-    if (c.name != null && (c.start != null || c.finish != null || c.pct != null || c.owner != null)) { hi = r; col = c; break; }
-    if (c.name != null && hi < 0) { hi = r; col = c; }
+/* ---- flexible plan layouts: header row and columns are found by name OR by content ---- */
+const PLAN_FIELDS = [['', '— Ignore —'], ['name', 'Task name'], ['wbs', 'WBS / ID'], ['level', 'Outline level'], ['owner', 'Owner / resource'], ['start', 'Start date'], ['finish', 'Finish / due date'], ['pct', '% complete'], ['duration', 'Duration'], ['status', 'Status'], ['milestone', 'Milestone (yes/no)'], ['notes', 'Notes']];
+const cellStr = v => v == null ? '' : String(v).trim();
+const colLetter = i => { let out = ''; i++; while (i) { const m = (i - 1) % 26; out = String.fromCharCode(65 + m) + out; i = Math.floor((i - 1) / 26); } return out; };
+function isDateCell(v) {
+  if (typeof v === 'number') return v > 20000 && v < 80000;
+  const t = cellStr(v);
+  return t.length >= 5 && /\d/.test(t) && !/^\d+(\.\d+)+$/.test(t) && /[\/\-.]|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(t) && !!planDate(t);
+}
+const PERSON_RE = /^[A-Z][a-z'’-]+(?:\s+[A-Z][a-z'’.-]+){1,2}(?:\s*\[[^\]]*\])?(?:\s*[,;/&]\s*[A-Z][a-z'’-]+(?:\s+[A-Z][a-z'’.-]+){0,2}(?:\s*\[[^\]]*\])?)*$/;
+function profileColumn(vals) {
+  const raw = vals.filter(x => cellStr(x)), n = raw.length || 1, r = f => raw.filter(f).length / n, v = raw.map(cellStr);
+  return {
+    filled: raw.length,
+    date: r(isDateCell),
+    pct: r(x => /^\d{1,3}(\.\d+)?\s*%$/.test(cellStr(x)) || (typeof x === 'number' && x >= 0 && x <= 1 && !Number.isInteger(x))),
+    wbs: r(x => /^\d+(\.\d+)*$/.test(cellStr(x))) * (v.some(t => /^\d+\.\d/.test(t)) ? 1 : 0.4),
+    person: r(x => typeof x === 'string' && PERSON_RE.test(x.trim())),
+    duration: r(x => /^\d+(\.\d+)?\s*(d|days?|e?days|h|hrs?|hours?|w|wks?|weeks?|mo|mons?|months?)\??$/i.test(cellStr(x))),
+    bool: r(x => /^(y|n|yes|no|true|false|x)$/i.test(cellStr(x))),
+    status: r(x => /^(not started|in progress|complete|completed|done|on track|at risk|late|delayed|open|closed|on hold|blocked|cancelled|canceled)$/i.test(cellStr(x))),
+    text: r(x => typeof x === 'string' && /[A-Za-z]{2}/.test(x) && !isDateCell(x)),
+    avgLen: v.reduce((a, t) => a + t.length, 0) / n,
+    distinct: new Set(v).size / n,
+  };
+}
+function detectHeaderRow(rows) {
+  let best = -1, bestScore = 0;
+  for (let i = 0; i < Math.min(rows.length, 25); i++) {
+    const all = (rows[i] || []).map(cellStr).filter(Boolean);
+    if (all.length < 2) continue;
+    // a header row is made of labels: dates, numbers, percentages and WBS codes mean it's a data row
+    const dataLike = c => typeof c === 'number' || isDateCell(c) || /^[\d.,]+\s*%?$/.test(cellStr(c));
+    if ((rows[i] || []).filter(c => cellStr(c) && dataLike(c)).length >= all.length / 3) continue;
+    const cells = (rows[i] || []).map(c => typeof c === 'string' && !dataLike(c) ? c.trim() : '');
+    const sc = Object.keys(mapPlanColumns(cells)).length;
+    if (sc > bestScore) { best = i; bestScore = sc; }
   }
-  if (hi < 0) return { tasks: [], col: null };
-  const get = (row, k) => col[k] != null ? row[col[k]] : '';
-  const body = rows.slice(hi + 1).map((row, j) => ({ row: row || [], ind: (indents && indents[hi + 1 + j]) || [] })).filter(x => String(get(x.row, 'name') ?? '').trim());
+  if (bestScore >= 1) return best;
+  // no recognisable names: an all-text row followed by a row with dates/numbers is still a header
+  const first = rows.findIndex(row => (row || []).filter(c => cellStr(c)).length >= 2);
+  if (first >= 0) {
+    const r0 = rows[first].filter(c => cellStr(c)), r1 = rows[first + 1] || [];
+    const allText = r0.every(c => typeof c === 'string' && !isDateCell(c) && !/^\d+([.,]\d+)?%?$/.test(c.trim()));
+    if (allText && r1.some(c => typeof c === 'number' || isDateCell(c))) return first;
+  }
+  return -1;   // no header row: columns are recognised by their contents only
+}
+function autoMapPlan(rows, hi) {
+  const hdr = hi >= 0 ? (rows[hi] || []).map(cellStr) : [];
+  const body = rows.slice(hi + 1).filter(row => (row || []).some(c => cellStr(c))).slice(0, 400);
+  const ncol = Math.max(hdr.length, 0, ...body.map(row => (row || []).length));
+  const col = hi >= 0 ? mapPlanColumns(hdr) : {};
+  const used = new Set(Object.values(col)), prof = [];
+  for (let j = 0; j < ncol; j++) prof[j] = profileColumn(body.map(row => (row || [])[j]));
+  const free = j => !used.has(j) && prof[j] && prof[j].filled > 0;
+  const take = (k, j) => { if (j >= 0 && col[k] == null) { col[k] = j; used.add(j); } };
+  const dateCols = [...Array(ncol).keys()].filter(j => free(j) && prof[j].date >= 0.6);
+  if (col.start == null && col.finish == null && dateCols.length >= 2) { take('start', dateCols[0]); take('finish', dateCols[1]); }
+  else if (dateCols.length) { if (col.finish == null) take('finish', dateCols[0]); else if (col.start == null) take('start', dateCols[0]); }
+  const best = (k, f, min) => { if (col[k] != null) return; let bj = -1, bs = min; for (let j = 0; j < ncol; j++) if (free(j) && prof[j][f] >= bs) { bs = prof[j][f]; bj = j; } take(k, bj); };
+  best('pct', 'pct', 0.6); best('wbs', 'wbs', 0.7); best('duration', 'duration', 0.6); best('status', 'status', 0.6); best('milestone', 'bool', 0.8);
+  if (col.name == null) {   // the most descriptive text column (long, varied, not mostly people's names)
+    let bj = -1, bs = 0;
+    for (let j = 0; j < ncol; j++) { const q = prof[j]; if (!free(j) || q.text < 0.6) continue; const sc = q.avgLen * (q.person > 0.6 ? 0.3 : 1) * (0.5 + q.distinct / 2); if (sc > bs) { bs = sc; bj = j; } }
+    take('name', bj);
+  }
+  best('owner', 'person', 0.5);
+  return { col, ncol, hdr };
+}
+function buildPlanTasks(rows, indents, hi, col) {
+  const has = k => col[k] != null && col[k] >= 0;
+  const get = (row, k) => has(k) ? row[col[k]] : '';
+  const hdrName = hi >= 0 && has('name') ? cellStr((rows[hi] || [])[col.name]).toLowerCase() : '';
+  const body = rows.slice(hi + 1).map((row, j) => ({ row: row || [], ind: (indents && indents[hi + 1 + j]) || [], n: hi + 2 + j }))
+    .filter(x => Object.values(col).some(j => j >= 0 && cellStr(x.row[j])));
   const pRaw = body.map(x => { const v = get(x.row, 'pct'); return typeof v === 'number' ? v : parseFloat(String(v ?? '').replace('%', '')); }).filter(v => !isNaN(v));
   const scale = pRaw.length && Math.max(...pRaw) <= 1 && pRaw.some(v => v > 0) ? 100 : 1;
-  let tasks = body.map(({ row, ind }) => {
-    const rawName = String(get(row, 'name'));
-    const name = rawName.trim();
-    const wbs = String(get(row, 'wbs') ?? '').trim();
+  let tasks = body.map(({ row, ind, n }) => {
+    const rawName = has('name') ? String(get(row, 'name') ?? '') : '';
+    let name = rawName.trim();
+    if (hdrName && name.toLowerCase() === hdrName) return null;   // repeated header line
+    const wbs = cellStr(get(row, 'wbs'));
+    const start = planDate(get(row, 'start')), finish = planDate(get(row, 'finish'));
+    if (!name) { if (!start && !finish && !wbs) return null; name = wbs ? `Task ${wbs}` : `Row ${n}`; }
     let level = parseInt(get(row, 'level'), 10);
     if (isNaN(level)) {
       if (/^\d+(\.\d+)*$/.test(wbs)) level = wbs.split('.').length;
-      else if (col.name != null && ind[col.name]) level = 1 + ind[col.name];
+      else if (has('name') && ind[col.name]) level = 1 + ind[col.name];
       else { const sp = rawName.match(/^\s*/)[0].replace(/\t/g, '    ').length; level = 1 + Math.floor(sp / 2); }
     }
-    let pv = get(row, 'pct'), pct = typeof pv === 'number' ? pv * scale : parseFloat(String(pv ?? '').replace('%', '')) * (String(pv).includes('%') ? 1 : scale);
-    if (isNaN(pct)) { const st = String(get(row, 'status') ?? ''); pct = /complete|done|closed/i.test(st) ? 100 : /progress|started|on track|at risk/i.test(st) ? 50 : 0; }
-    const dur = String(get(row, 'duration') ?? '');
-    const ms = /^(y|yes|true|1|x)$/i.test(String(get(row, 'milestone') ?? '').trim()) || /^0(\.0+)?\s*(d|days?|h|hrs?|hours?|w|wks?|weeks?|e?days?)?\??$/i.test(dur.trim());
-    const owner = String(get(row, 'owner') ?? '').replace(/\[[^\]]*\]/g, '').replace(/\s*,\s*/g, ', ').trim();
-    return { id: uid(), wbs, name, level, start: planDate(get(row, 'start')), finish: planDate(get(row, 'finish')), pct: clampPct(pct), owner, milestone: ms, notes: String(get(row, 'notes') ?? '').trim() };
+    const pv = get(row, 'pct');
+    let pct = typeof pv === 'number' ? pv * scale : parseFloat(String(pv ?? '').replace('%', '')) * (String(pv).includes('%') ? 1 : scale);
+    if (isNaN(pct)) { const st = cellStr(get(row, 'status')); pct = /complete|done|closed/i.test(st) ? 100 : /progress|started|on track|at risk/i.test(st) ? 50 : 0; }
+    const dur = cellStr(get(row, 'duration'));
+    const ms = /^(y|yes|true|1|x)$/i.test(cellStr(get(row, 'milestone'))) || /^0(\.0+)?\s*(d|days?|h|hrs?|hours?|w|wks?|weeks?|e?days?)?\??$/i.test(dur);
+    const owner = cellStr(get(row, 'owner')).replace(/\[[^\]]*\]/g, '').replace(/\s*,\s*/g, ', ').trim();
+    return { id: uid(), wbs, name, level, start, finish, pct: clampPct(pct), owner, milestone: ms, notes: cellStr(get(row, 'notes')) };
+  }).filter(Boolean);
+  if (tasks.length) { const minL = Math.min(...tasks.map(t => t.level)); if (minL !== 1) tasks.forEach(t => { t.level = Math.max(1, t.level - minL + 1); }); }
+  return tasks;
+}
+const planMapKey = (hdr, ncol) => hdr.some(Boolean) ? hdr.map(h => h.toLowerCase()).join('|') : 'no-header:' + ncol;
+/** Automatic import (no dialog): used as a fallback and by older callers. */
+function rowsToTasks(rows, indents) {
+  const hi = detectHeaderRow(rows), m = autoMapPlan(rows, hi);
+  const saved = state.settings && state.settings.planMaps && state.settings.planMaps[planMapKey(m.hdr, m.ncol)];
+  const col = saved ? { ...saved } : m.col;
+  return { tasks: buildPlanTasks(rows, indents, hi, col), col };
+}
+/** "Map your columns": pick sheet + header row, adjust what each column means, see the result live. */
+function openPlanMapper(fileName, sheets) {
+  return new Promise(resolve => {
+    const d = gid('planMapDialog'), f = gid('planMapForm'); let done = false, cur = null;
+    const scored = sheets.map((sh, i) => ({ i, n: rowsToTasks(sh.rows, sh.indents).tasks.length })).sort((a, b) => b.n - a.n);
+    const fieldOf = j => Object.keys(cur.col).find(k => cur.col[k] === j) || '';
+    const load = (si, hiOverride) => {
+      const sh = sheets[si], hi = hiOverride !== undefined ? hiOverride : detectHeaderRow(sh.rows), m = autoMapPlan(sh.rows, hi);
+      const key = planMapKey(m.hdr, m.ncol), saved = state.settings.planMaps && state.settings.planMaps[key];
+      cur = { si, hi, col: saved ? { ...saved } : m.col, ncol: m.ncol, hdr: m.hdr, key, remembered: !!saved };
+      const opts = ['<option value="-1">No header row — use column letters</option>'];
+      sh.rows.slice(0, 20).forEach((row, i) => { const cells = (row || []).map(cellStr).filter(Boolean); if (cells.length) opts.push(`<option value="${i}">Row ${i + 1}: ${esc(clip(cells.slice(0, 4).join(' · '), 70))}</option>`); });
+      gid('pmHeader').innerHTML = opts.join(''); gid('pmHeader').value = String(hi);
+      draw();
+    };
+    const draw = () => {
+      const sh = sheets[cur.si], body = sh.rows.slice(cur.hi + 1).filter(row => (row || []).some(c => cellStr(c)));
+      const fmt = v => typeof v === 'number' && v > 20000 && v < 80000 ? fmtDate(planDate(v)) : typeof v === 'number' && v > 0 && v <= 1 && !Number.isInteger(v) ? Math.round(v * 100) + '%' : cellStr(v);
+      const rowsHtml = [];
+      for (let j = 0; j < cur.ncol; j++) {
+        const samples = body.map(row => (row || [])[j]).filter(v => cellStr(v)).slice(0, 3).map(fmt);
+        if (!samples.length && !cur.hdr[j]) continue;
+        const fld = fieldOf(j);
+        rowsHtml.push(`<tr class="${fld ? '' : 'pm-ignored'}"><td style="white-space:nowrap"><b>${colLetter(j)}</b> ${esc(cur.hdr[j] || '')}</td><td class="small muted">${samples.map(x => esc(clip(x, 40))).join(' · ') || '<i>empty</i>'}</td>
+          <td><select data-pm-col="${j}" aria-label="Use column ${colLetter(j)} as">${PLAN_FIELDS.map(([k, label]) => `<option value="${k}" ${k === fld ? 'selected' : ''}>${label}</option>`).join('')}</select></td></tr>`);
+      }
+      gid('pmCols').innerHTML = `<thead><tr><th>Column</th><th>Sample values</th><th>Use as</th></tr></thead><tbody>${rowsHtml.join('')}</tbody>`;
+      const tasks = buildPlanTasks(sh.rows, sh.indents, cur.hi, cur.col);
+      cur.tasks = tasks;
+      gid('pmCount').textContent = `· ${plural(tasks.length, 'task')}` + (tasks.length > 12 ? ' (first 12 shown)' : '');
+      gid('pmPreview').innerHTML = `<thead><tr><th>Task</th><th>Owner</th><th>Start</th><th>Finish</th><th class="num">%</th></tr></thead><tbody>${tasks.slice(0, 12).map(t => `<tr><td><span style="padding-left:${(t.level - 1) * 14}px">${t.milestone ? '◆ ' : ''}${esc(t.name)}</span>${t.wbs ? ` <span class="muted small">${esc(t.wbs)}</span>` : ''}</td><td class="small">${esc(t.owner)}</td><td class="small">${t.start ? fmtDate(t.start) : '—'}</td><td class="small">${t.finish ? fmtDate(t.finish) : '—'}</td><td class="num small">${t.pct}%</td></tr>`).join('')}</tbody>`;
+      const named = cur.col.name != null;
+      gid('pmHint').textContent = cur.remembered ? 'Using the column choices you made last time for this layout — change any of them below.'
+        : named ? 'Columns were matched automatically by their headings and contents — check them and change any that are wrong.'
+        : 'No task-name column was found, so tasks are named from their WBS / ID or row number. Pick a column as “Task name” if one fits.';
+      gid('pmErr').textContent = tasks.length ? '' : 'No tasks with this setup — choose which columns hold the task names, dates or WBS numbers.';
+      gid('pmImport').disabled = !tasks.length;
+      gid('pmImport').textContent = tasks.length ? `Import ${plural(tasks.length, 'task')}` : 'Import';
+    };
+    gid('pmFile').textContent = fileName;
+    const ss = gid('pmSheet');
+    ss.innerHTML = sheets.map((sh, i) => `<option value="${i}">${esc(sh.name || 'Sheet ' + (i + 1))} (${plural(sh.rows.filter(r => (r || []).some(c => cellStr(c))).length, 'row')})</option>`).join('');
+    gid('pmSheetWrap').hidden = sheets.length < 2;
+    ss.onchange = () => load(+ss.value);
+    gid('pmHeader').onchange = () => load(cur.si, +gid('pmHeader').value);
+    gid('pmCols').onchange = e => {
+      const sel = e.target.closest('[data-pm-col]'); if (!sel) return;
+      const j = +sel.dataset.pmCol, k = sel.value;
+      Object.keys(cur.col).forEach(x => { if (cur.col[x] === j || x === k) delete cur.col[x]; });   // one field per column, one column per field
+      if (k) cur.col[k] = j;
+      cur.remembered = false; draw();
+    };
+    f.onsubmit = e => {
+      e.preventDefault(); if (!cur.tasks || !cur.tasks.length) return;
+      state.settings.planMaps = state.settings.planMaps || {};
+      state.settings.planMaps[cur.key] = { ...cur.col };
+      const keys = Object.keys(state.settings.planMaps); if (keys.length > 25) delete state.settings.planMaps[keys[0]];
+      done = true; d.close(); resolve({ tasks: cur.tasks, sheetName: sheets[cur.si].name || '' });
+    };
+    d.onclose = () => { if (!done) resolve(null); };
+    ss.value = String(scored.length ? scored[0].i : 0);
+    load(+ss.value);
+    d.showModal();
   });
-  const minL = Math.min(...tasks.map(t => t.level));
-  if (minL < 1 || minL > 1) tasks.forEach(t => { t.level = t.level - minL + 1; });
-  return { tasks, col };
 }
 function parseProjectXml(text) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
@@ -2059,13 +2225,17 @@ async function importPlanFile(file) {
     if (/\.mpp$/i.test(file.name)) throw new Error('Microsoft Project .mpp files can’t be read in a browser. In Project choose File → Save As → XML (*.xml) or Excel Workbook (*.xlsx), then upload that file');
     if (/\.xls$/i.test(file.name) && isOle) throw new Error('old-format .xls workbooks can’t be read in a browser. In Excel choose File → Save As → Excel Workbook (*.xlsx), then upload that file');
     if (/\.xml$/i.test(file.name)) ({ tasks, title } = parseProjectXml(new TextDecoder().decode(buf)));
-    else if (/\.csv$/i.test(file.name) || /\.txt$/i.test(file.name)) tasks = rowsToTasks(parseCSV(new TextDecoder().decode(buf))).tasks;
-    else if (/\.(xlsx|xlsm)$/i.test(file.name) || (head[0] === 0x50 && head[1] === 0x4B)) {
-      let best = [];
-      for (const sh of await parseXlsx(buf)) { const r = rowsToTasks(sh.rows, sh.indents); if (r.tasks.length > best.length) { best = r.tasks; title = title || sh.name; } }
-      tasks = best;
-    } else throw new Error('unsupported file type — use .xlsx, .csv or Microsoft Project .xml');
-    if (!tasks.length) throw new Error('no tasks found. The sheet needs a header row with a task-name column (e.g. “Task Name”), plus optional Start, Finish, % Complete and Owner columns');
+    else {
+      let sheets;
+      if (/\.(csv|txt)$/i.test(file.name)) sheets = [{ name: file.name, rows: parseCSV(new TextDecoder().decode(buf)), indents: [] }];
+      else if (/\.(xlsx|xlsm)$/i.test(file.name) || (head[0] === 0x50 && head[1] === 0x4B)) sheets = (await parseXlsx(buf)).filter(sh => sh.rows.some(r => (r || []).some(c => cellStr(c))));
+      else throw new Error('unsupported file type — use .xlsx, .csv or Microsoft Project .xml');
+      if (!sheets.length) throw new Error('the file is empty');
+      const res = await openPlanMapper(file.name, sheets);
+      if (!res) return;   // cancelled
+      tasks = res.tasks; title = res.sheetName;
+    }
+    if (!tasks.length) throw new Error('no tasks found in this file');
     if (state.plan && state.plan.tasks.length && !confirm(`Replace the current project plan (${plural(state.plan.tasks.length, 'task')}) with “${file.name}” (${plural(tasks.length, 'task')})?\n\n% complete values entered on the dashboard are kept for tasks with the same name.`)) return;
     if (state.plan) { const old = new Map(state.plan.tasks.map(t => [t.name.toLowerCase(), t.pct])); tasks.forEach(t => { const o = old.get(t.name.toLowerCase()); if (o != null && o > t.pct) t.pct = o; }); }
     state.plan = { name: file.name.replace(/\.[^.]+$/, ''), source: file.name, importedAt: Date.now(), tasks };
