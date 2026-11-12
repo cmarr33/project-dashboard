@@ -261,6 +261,10 @@ tr.drop-over td { background: var(--wash) !important; }
 .extract-head a:hover { text-decoration: underline; }
 .extract-list { margin: 0; padding-left: 0; list-style: none; font-size: 13px; }
 .extract-list li { margin: 4px 0; }
+.row-tools { white-space: nowrap; margin-left: 4px; }
+.extract-list li .row-tools { opacity: .35; transition: opacity .12s; }
+.extract-list li:hover .row-tools, .extract-list li:focus-within .row-tools { opacity: 1; }
+@media (hover: none) { .extract-list li .row-tools { opacity: 1; } }
 /* lock screen */
 body.locked > :not(#lock):not(.toast) { visibility: hidden; }
 .lock { position: fixed; inset: 0; z-index: 300; background: var(--page); display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -514,7 +518,10 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
       <div class="att-drop" id="aAttDrop" data-drop-type="staged-action" tabindex="0" role="button">📎 Drag files or Outlook emails here, or <u>browse</u></div>
       <div class="att-list" id="aAttList"></div>
     </div>
+    <p class="small muted" id="actionSource" hidden></p>
     <div class="dialog-actions">
+      <button type="button" class="btn danger" id="aDelete" hidden>Delete</button>
+      <div class="spacer"></div>
       <button type="button" class="btn" data-close>Cancel</button>
       <button type="submit" class="btn primary">Save action item</button>
     </div>
@@ -657,12 +664,13 @@ async function accountExists(u) { return localStorage.getItem(recKey(await acctI
 function accountCount() { let n = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(UPREFIX) || k.startsWith(LEGACY_UPREFIX)) n++; } return n; }
 const MIN_PASS = 8;
 const IDLE_DEFAULT = 15;   // minutes; per-account setting in state.settings.idleMins (0 = never)
-const emptyState = () => ({ project: 'Project Management Dashboard', meetings: [], actions: [], attachments: [], settings: { idleMins: IDLE_DEFAULT, planWindow: 14 }, plan: null });
+const emptyState = () => ({ project: 'Project Management Dashboard', meetings: [], actions: [], attachments: [], settings: { idleMins: IDLE_DEFAULT, planWindow: 14 }, plan: null, dismissed: [] });
 const validState = s => !!(s && Array.isArray(s.meetings) && Array.isArray(s.actions));
 const normState = s => {
   s.attachments = Array.isArray(s.attachments) ? s.attachments : [];
   s.settings = Object.assign({ idleMins: IDLE_DEFAULT, planWindow: 14 }, s.settings || {});
   s.plan = s.plan && Array.isArray(s.plan.tasks) ? s.plan : null;
+  s.dismissed = Array.isArray(s.dismissed) ? s.dismissed : [];   // lower-case texts of deleted auto-detected action items
   return s;
 };
 let state = emptyState();
@@ -1172,7 +1180,8 @@ function updateDetect() {
   const found = extractActions(mForm.minutes.value, mForm.attendees.value, mForm.id.value || null);
   const isEdit = !!mForm.id.value;
   const existing = isEdit ? state.actions.filter(a => a.meetingId === mForm.id.value) : [];
-  const fresh = found.filter(f => !existing.some(e => e.text.toLowerCase() === f.text.toLowerCase()));
+  const known = knownActionTexts(existing);
+  const fresh = found.filter(f => !known.has(f.text.toLowerCase()));
   if (!fresh.length) { box.hidden = true; return; }
   box.hidden = false;
   box.innerHTML = `<b>${plural(fresh.length, 'action item')} detected</b> — will be added on save:
@@ -1190,8 +1199,9 @@ mForm.addEventListener('submit', e => {
   if (id) { m = meetingById(id); Object.assign(m, data); }
   else { m = { id: uid(), createdAt: Date.now(), ...data }; state.meetings.push(m); }
   const existing = state.actions.filter(a => a.meetingId === m.id);
-  const fresh = extractActions(m.minutes, m.attendees, m.id).filter(f => !existing.some(x => x.text.toLowerCase() === f.text.toLowerCase()));
-  fresh.forEach(f => { const a = { id: uid(), text: f.text, owner: f.owner || 'Unassigned', due: f.due, status: f.done ? 'Done' : 'Open', priority: 'Medium', meetingId: m.id, notes: '', createdAt: Date.now() }; markCompleted(a); state.actions.push(a); });
+  const known = knownActionTexts(existing);
+  const fresh = extractActions(m.minutes, m.attendees, m.id).filter(f => !known.has(f.text.toLowerCase()));
+  fresh.forEach(f => { const a = { id: uid(), text: f.text, owner: f.owner || 'Unassigned', due: f.due, status: f.done ? 'Done' : 'Open', priority: 'Medium', meetingId: m.id, notes: '', auto: true, origText: f.text, createdAt: Date.now() }; markCompleted(a); state.actions.push(a); });
   toast((id ? 'Meeting updated' : 'Meeting saved') + (fresh.length ? ' · ' + plural(fresh.length, 'action item') + ' added' : ''));
   save();
   if (fixOwners(m.id)) save();
@@ -1226,9 +1236,16 @@ function openActionDialog(id, meetingId) {
   aForm.priority.value = a ? a.priority || 'Medium' : 'Medium';
   aForm.meetingId.value = a ? a.meetingId || '' : (meetingId || '');
   aForm.notes.value = a ? a.notes || '' : '';
+  const srcAtt = a && a.source ? state.attachments.find(x => x.id === a.source.attachmentId) : null;
+  const srcEl = document.getElementById('actionSource');
+  srcEl.hidden = !(a && (a.source || a.auto));
+  srcEl.innerHTML = !a ? '' : a.source ? `📋 Found in the attachment ${srcAtt ? `<a href="#" data-att-open="${esc(srcAtt.id)}">${esc((srcAtt.email && srcAtt.email.subject) || srcAtt.name)}</a>` : '(file since removed)'}${a.origText && a.origText !== a.text ? ` · originally “${esc(a.origText)}”` : ''}. Your edits are kept.`
+    : a.auto ? `📋 Found in the meeting minutes${a.origText && a.origText !== a.text ? ` · originally “${esc(a.origText)}”` : ''}. Your edits are kept.` : '';
+  document.getElementById('aDelete').hidden = !a;
   staged.action = []; refreshDialogAtts();
   aDlg.showModal();
 }
+document.getElementById('aDelete').addEventListener('click', async () => { const id = aForm.id.value; if (id && await deleteAction(id)) aDlg.close(); });
 aForm.addEventListener('submit', () => {
   const data = { text: aForm.text.value.trim(), owner: aForm.owner.value.trim() || 'Unassigned', due: aForm.due.value, status: aForm.status.value, priority: aForm.priority.value, meetingId: aForm.meetingId.value, notes: aForm.notes.value.trim() };
   const id = aForm.id.value, newId = id || uid();
@@ -1239,6 +1256,26 @@ aForm.addEventListener('submit', () => {
   save();
   if (staged.action.length) { const files = staged.action; staged.action = []; addAttachments(files, 'action', newId); }
 });
+const knownActionTexts = list => new Set([...(state.dismissed || []), ...list.flatMap(a => [a.text, a.origText || ''].filter(Boolean).map(t => t.toLowerCase()))]);
+function rememberDeleted(a) {
+  if (!a) return;   // any deleted item: its text is never auto-added again
+  if (!Array.isArray(state.dismissed)) state.dismissed = [];
+  const t = (a.origText || a.text || '').toLowerCase();
+  if (t && !state.dismissed.includes(t)) state.dismissed.push(t);
+  if (a.text && a.text.toLowerCase() !== t && !state.dismissed.includes(a.text.toLowerCase())) state.dismissed.push(a.text.toLowerCase());
+}
+/** Delete an action item (and its own attachments). Auto-detected items are remembered so they aren't re-logged. */
+async function deleteAction(id) {
+  const a = state.actions.find(x => x.id === id); if (!a) return false;
+  const na = attsFor('action', id).length;
+  if (!confirm(`Delete the action item “${clip(a.text, 80)}”?` + (na ? `\n\nIts ${plural(na, 'attachment')} will also be deleted.` : '') + (a.source ? '\n\nIt won’t be added again from its attachment.' : ''))) return false;
+  await removeAttachments(attsFor('action', id).map(x => x.id));
+  rememberDeleted(a);
+  state.actions = state.actions.filter(x => x.id !== id);
+  state.attachments.forEach(t => { if (t.scan && t.scan.actionIds) t.scan.actionIds = t.scan.actionIds.filter(x => x !== id); });
+  save(); toast('Action item deleted');
+  return true;
+}
 function markCompleted(a) { if (a.status === 'Done' && !a.completedAt) a.completedAt = toISO(today()); if (a.status !== 'Done') delete a.completedAt; }
 
 /* header buttons */
@@ -1611,7 +1648,7 @@ function meetingDetail(m) {
       <section class="md-sec"><h3>Decisions</h3>${d.decisions.length ? `<ul class="md-list dec">${d.decisions.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted small">None recorded</p>'}</section>
       <section class="md-sec"><h3>Risks &amp; issues</h3>${d.risks.length ? `<ul class="md-list risk">${d.risks.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted small">None recorded</p>'}</section>
     </div>` : ''}
-    <section class="md-sec"><h3>Action items</h3>${acts.length ? `<table class="md-acts"><tbody>${sortActs(acts).map(a => `<tr class="${a.status === 'Done' ? 'done-row' : ''}"><td style="width:120px">${statusPill(a)}</td><td><span class="act-text">${esc(a.text)}</span>${a.source ? ' <span class="muted small">· from attachment</span>' : ''}</td><td class="small" style="white-space:nowrap">${esc(a.owner)}</td><td class="small" style="white-space:nowrap">${a.due ? (a.status === 'Done' ? fmtDate(a.due) : relDue(a.due)) : '<span class="muted">No due date</span>'}</td><td style="width:80px;text-align:right">${a.status === 'Done' ? '' : `<button class="btn sm" data-done="${esc(a.id)}">✓ Done</button>`}</td></tr>`).join('')}</tbody></table>` : '<p class="muted small" style="margin:0">No action items yet.</p>'}</section>
+    <section class="md-sec"><h3>Action items</h3>${acts.length ? `<table class="md-acts"><tbody>${sortActs(acts).map(a => `<tr class="${a.status === 'Done' ? 'done-row' : ''}"><td style="width:120px">${statusPill(a)}</td><td><span class="act-text">${esc(a.text)}</span>${a.source ? ' <span class="muted small">· from attachment</span>' : ''}</td><td class="small" style="white-space:nowrap">${esc(a.owner)}</td><td class="small" style="white-space:nowrap">${a.due ? (a.status === 'Done' ? fmtDate(a.due) : relDue(a.due)) : '<span class="muted">No due date</span>'}</td><td style="width:150px;text-align:right;white-space:nowrap">${a.status === 'Done' ? '' : `<button class="btn sm" data-done="${esc(a.id)}">✓ Done</button>`}<button class="icon-btn" data-edit-action="${esc(a.id)}" title="Edit" aria-label="Edit ${esc(a.text)}">✎</button><button class="icon-btn" data-del-action="${esc(a.id)}" title="Delete" aria-label="Delete ${esc(a.text)}">🗑</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted small" style="margin:0">No action items yet.</p>'}</section>
     <section class="md-sec"><h3>Attachments</h3><div class="att-list">${attChips(atts)}</div><div class="att-drop sm" tabindex="0" role="button">📎 Drop files or Outlook emails here, or <u>browse</u> — action items inside are logged automatically</div></section>
     ${m.minutes ? `<details class="minutes"><summary>Full minutes</summary><pre>${esc(m.minutes)}</pre></details>` : ''}
   </div>`;
@@ -1773,7 +1810,7 @@ document.addEventListener('click', e => {
   const d = t.dataset;
   if (d.done) { const a = state.actions.find(x => x.id === d.done); a.status = 'Done'; markCompleted(a); save(); toast('Marked done'); }
   else if (d.editAction) openActionDialog(d.editAction);
-  else if (d.delAction) { const na = attsFor('action', d.delAction).length; if (confirm('Delete this action item?' + (na ? `\n\nIts ${plural(na, 'attachment')} will also be deleted.` : ''))) { removeAttachments(attsFor('action', d.delAction).map(a => a.id)).then(() => { state.actions = state.actions.filter(x => x.id !== d.delAction); save(); }); } }
+  else if (d.delAction) deleteAction(d.delAction);
   else if (d.editMeeting) openMeetingDialog(d.editMeeting);
   else if (d.addAction) openActionDialog(null, d.addAction);
   else if (d.delMeeting) {
@@ -2539,10 +2576,10 @@ async function textForScan(name, type, buf) {
 function logExtracted(att, items) {
   const meetingId = att.parentType === 'meeting' ? att.parentId : ((state.actions.find(a => a.id === att.parentId) || {}).meetingId || '');
   const people = [...new Set([...meetingPeople(meetingId), ...(att.email ? [...splitPeople(att.email.from), ...splitPeople(att.email.to), ...splitPeople(att.email.cc)] : []), ...items.map(i => i.owner).filter(o => o && /\s/.test(o) && !o.includes('/'))])];
-  const existing = new Set(state.actions.map(a => a.text.toLowerCase())), ids = [];
+  const existing = knownActionTexts(state.actions), ids = [];
   for (const it of items) {
     const k = it.text.toLowerCase(); if (existing.has(k)) continue; existing.add(k);
-    const a = { id: uid(), text: it.text, owner: resolveOwners(it.owner, people) || 'Unassigned', due: it.due || '', status: it.done ? 'Done' : 'Open', priority: 'Medium', meetingId, notes: 'From attachment: ' + att.name, source: { attachmentId: att.id }, createdAt: Date.now() };
+    const a = { id: uid(), text: it.text, owner: resolveOwners(it.owner, people) || 'Unassigned', due: it.due || '', status: it.done ? 'Done' : 'Open', priority: 'Medium', meetingId, notes: 'From attachment: ' + att.name, source: { attachmentId: att.id }, auto: true, origText: it.text, createdAt: Date.now() };
     markCompleted(a); state.actions.push(a); ids.push(a.id);
   }
   att.scan = { at: Date.now(), found: items.length, actionIds: ids };
@@ -2601,7 +2638,7 @@ function renderExtractCard() {
       return `<div class="extract-group">
         <div class="extract-head"><a href="#" data-att-open="${esc(a.id)}">${a.email ? '✉' : fileIcon(a.name, a.type)} ${esc((a.email && a.email.subject) || a.name)}</a><span class="muted small">${esc(where)}</span><span class="spacer"></span><button class="btn sm" data-unlog="${esc(a.id)}" title="Remove the action items that were logged from this file">Remove these</button></div>
         <div class="small muted" style="margin:2px 0 4px">${esc(summarizeActs(acts))}</div>
-        <ul class="extract-list">${acts.slice(0, 8).map(x => `<li>${statusPill(x)} <span class="${x.status === 'Done' ? 'muted' : ''}">${esc(x.text)}</span> <span class="muted">— ${esc(x.owner)}${x.due ? ',' : ''}</span> ${x.due ? (x.status === 'Done' ? fmtDate(x.due) : relDue(x.due, true)) : ''}</li>`).join('')}${acts.length > 8 ? `<li class="muted">+${acts.length - 8} more</li>` : ''}</ul>
+        <ul class="extract-list">${acts.slice(0, 8).map(x => `<li>${statusPill(x)} <span class="${x.status === 'Done' ? 'muted' : ''}">${esc(x.text)}</span> <span class="muted">— ${esc(x.owner)}${x.due ? ',' : ''}</span> ${x.due ? (x.status === 'Done' ? fmtDate(x.due) : relDue(x.due, true)) : ''} <span class="row-tools"><button class="icon-btn" data-edit-action="${esc(x.id)}" title="Edit" aria-label="Edit ${esc(x.text)}">✎</button><button class="icon-btn" data-del-action="${esc(x.id)}" title="Delete" aria-label="Delete ${esc(x.text)}">🗑</button></span></li>`).join('')}${acts.length > 8 ? `<li class="muted">+${acts.length - 8} more</li>` : ''}</ul>
       </div>`;
     }).join('')}
     <p class="small" style="margin:8px 0 0"><a href="#" data-goto-att>View all ${all.length} on the Action Items tab →</a></p>`;
@@ -2613,6 +2650,7 @@ document.addEventListener('click', e => {
     const a = state.attachments.find(x => x.id === t.dataset.unlog); if (!a || !a.scan) return;
     const ids = new Set(a.scan.actionIds), n = state.actions.filter(x => ids.has(x.id)).length;
     if (!confirm(`Remove the ${plural(n, 'action item')} that were logged from “${a.name}”? The file itself stays attached.`)) return;
+    state.actions.filter(x => ids.has(x.id)).forEach(rememberDeleted);
     state.actions = state.actions.filter(x => !ids.has(x.id)); a.scan.actionIds = []; save(); toast(`Removed ${plural(n, 'action item')}`);
   } else { document.getElementById('fMeeting').value = '__att'; document.getElementById('fStatus').value = ''; document.getElementById('fOwner').value = ''; renderActions(); showView('actions'); }
 });
