@@ -348,7 +348,8 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
         </div>
         <div class="upload-actions">
           <button class="btn sm" id="btnPasteMinutes">Paste minutes</button>
-          <button class="btn sm" id="btnCsvTemplate">CSV template</button>
+          <button class="btn sm" data-minutes-template>Minutes template</button>
+          <button class="btn sm" id="btnCsvTemplate">Action items CSV template</button>
         </div>
       </div>
     </div>
@@ -397,6 +398,7 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
     <div class="filters">
       <input type="search" id="meetingSearch" placeholder="Search meetings and minutes…">
       <div class="spacer"></div>
+      <button class="btn" data-minutes-template>Minutes template</button>
       <button class="btn primary" id="btnAddMeeting2">+ Meeting minutes</button>
     </div>
     <div id="meetingList"></div>
@@ -491,6 +493,7 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
     <div class="detect-box" id="detectBox" hidden></div>
     <div class="dialog-actions">
       <button type="button" class="btn" id="btnLoadMinutesFile">Load from file…</button>
+      <button type="button" class="btn" data-minutes-template title="Download a minutes template that fits the dashboard">Template</button>
       <div class="spacer"></div>
       <button type="button" class="btn" value="cancel" data-close>Cancel</button>
       <button type="submit" class="btn primary" value="save">Save meeting</button>
@@ -564,6 +567,32 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
       <button type="button" class="btn danger" id="btnClear">Clear all data</button>
     </div>
     <div class="dialog-actions"><button type="button" class="btn" data-close>Close</button></div>
+  </form>
+</dialog>
+
+<!-- Meeting minutes template -->
+<dialog id="minutesTplDialog" style="width:min(640px,94vw)">
+  <form method="dialog">
+    <h2>Meeting minutes template</h2>
+    <p class="small" style="margin-top:-6px">Write minutes in this layout and the dashboard picks everything up automatically when you upload them or attach them to a meeting.</p>
+    <table class="small" style="margin-bottom:12px">
+      <tbody>
+        <tr><td style="white-space:nowrap"><b>First line</b></td><td>Meeting title</td></tr>
+        <tr><td><b>Date:</b></td><td>Meeting date (e.g. 2026-11-17)</td></tr>
+        <tr><td><b>Attendees:</b></td><td>Full names separated by <b>;</b> — used to turn first names into full names</td></tr>
+        <tr><td><b>Topic headings</b></td><td>One short heading per topic (e.g. “Budget”), then one full sentence per point → <b>Key talking points</b></td></tr>
+        <tr><td><b>Decisions</b></td><td>One decision per bullet</td></tr>
+        <tr><td><b>Risks &amp; Issues</b></td><td>One risk or issue per bullet</td></tr>
+        <tr><td><b>Action Items</b></td><td>Table with <b>Action | Owner | Due date | Status</b> — or lines like “Ron - Send the deck by Friday”. Each becomes an action item with its owner and due date.</td></tr>
+      </tbody>
+    </table>
+    <p class="small muted">Text in [square brackets] is a placeholder — replace it. Any placeholder left in is ignored.</p>
+    <div class="dialog-actions">
+      <button type="button" class="btn" data-close>Close</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn" id="btnTplTxt">Download text (.txt)</button>
+      <button type="button" class="btn primary" id="btnTplDocx">Download Word (.docx)</button>
+    </div>
   </form>
 </dialog>
 
@@ -870,7 +899,7 @@ function splitPeople(str, loose) {
   str = String(str || ''); if (!str.trim()) return [];
   const single = /^\s*"?[A-Z][\w'’-]+,\s*[A-Z][\w'’-]+(?:\s+[A-Z]\.?)?"?\s*(?:<[^>]*>)?\s*$/.test(str);   // one "Last, First" person
   const parts = single ? [str] : str.includes(';') ? str.split(';') : str.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
-  return parts.map(normPerson).filter(n => n && (loose || /\s/.test(n)));
+  return parts.map(normPerson).filter(n => n && !/[\[\]]/.test(n) && (loose || /\s/.test(n)));
 }
 function headerPeople(text) {   // From: / To: / Cc: lines (e.g. minutes created from an email)
   const out = []; String(text || '').replace(/^\s*(?:from|to|cc)\s*:\s*(.+)$/gim, (m0, v) => { out.push(...splitPeople(v)); return m0; });
@@ -1031,12 +1060,12 @@ function guessDate(name, text) {
 }
 function guessTitle(name, text) {
   const first = String(text).split(/\r?\n/).map(l => l.trim()).find(Boolean) || '';
-  if (first && first.length < 90 && !/^(date|attendees|action)/i.test(first)) return first.replace(/^#+\s*/, '').replace(/\s*[-–—|]\s*\d{4}-\d{2}-\d{2}$/, '');
+  if (first && first.length < 90 && !/^(date|attendees|action)/i.test(first) && !/^\[.*\]$/.test(first)) return first.replace(/^#+\s*/, '').replace(/\s*[-–—|]\s*\d{4}-\d{2}-\d{2}$/, '');
   return titleFromFilename(name);
 }
 function guessAttendees(text) {
   const m = /^\s*(?:attendees|present|participants)\s*[:\-]\s*(.+)$/im.exec(text);
-  return m ? m[1].trim() : '';
+  return m && !/^\[.*\]$/.test(m[1].trim()) ? m[1].trim() : '';
 }
 
 async function handleFiles(files) {
@@ -1226,7 +1255,7 @@ mForm.addEventListener('submit', e => {
   const existing = state.actions.filter(a => a.meetingId === m.id);
   const known = knownActionTexts(existing);
   const fresh = extractActions(m.minutes, m.attendees, m.id).filter(f => !known.has(f.text.toLowerCase()));
-  fresh.forEach(f => { const a = { id: uid(), text: f.text, owner: f.owner || 'Unassigned', due: f.due, status: f.done ? 'Done' : 'Open', priority: 'Medium', meetingId: m.id, notes: '', auto: true, origText: f.text, createdAt: Date.now() }; markCompleted(a); state.actions.push(a); });
+  fresh.forEach(f => { const a = { id: uid(), text: f.text, owner: f.owner || 'Unassigned', due: f.due, status: f.done ? 'Done' : f.inProgress ? 'In Progress' : 'Open', priority: 'Medium', meetingId: m.id, notes: '', auto: true, origText: f.text, createdAt: Date.now() }; markCompleted(a); state.actions.push(a); });
   toast((id ? 'Meeting updated' : 'Meeting saved') + (fresh.length ? ' · ' + plural(fresh.length, 'action item') + ' added' : ''));
   save();
   if (fixOwners(m.id)) save();
@@ -1353,6 +1382,96 @@ document.addEventListener('drop', e => {
   if (currentView === 'dashboard') handleFiles(files);
   else toast('Drop files onto a meeting or an action item to attach them');
 });
+/* ---------------- meeting minutes template (Word .docx + plain text) ---------------- */
+/* One model drives both files so they always match what the dashboard reads:
+   title line · Date: · Attendees: (separated by ;) · topic headings with full-sentence points (talking points)
+   · Decisions · Risks & Issues · Action Items table (Action | Owner | Due date | Status) · Next meeting:
+   Text in [square brackets] is a placeholder and is ignored if it is left in. */
+const MINUTES_MODEL = [
+  ['title', '[Meeting title]'],
+  ['note', '[How to use: keep the headings, replace everything in square brackets, delete any section you don’t need. Upload the finished file on the Dashboard, or attach it to a meeting.]'],
+  ['field', 'Date:', '[YYYY-MM-DD]'],
+  ['field', 'Attendees:', '[First Last; First Last; First Last]'],
+  ['head', 'Agenda'], ['bullet', '[Topic 1]'], ['bullet', '[Topic 2]'],
+  ['head', '[Topic 1 heading — e.g. Budget]'],
+  ['text', '[Write each key point as one full sentence — e.g. Spend is 4% under forecast for the quarter.]'],
+  ['text', '[Add one line per point.]'],
+  ['head', '[Topic 2 heading — e.g. Timeline]'],
+  ['text', '[Key point as a full sentence.]'],
+  ['head', 'Decisions'], ['bullet', '[What was decided — e.g. Approved moving go-live to 7 December.]'],
+  ['head', 'Risks & Issues'], ['bullet', '[Risk or issue — e.g. Vendor contract renewal is still unsigned.]'],
+  ['head', 'Action Items'],
+  ['table', ['Action', 'Owner', 'Due date', 'Status'], [['[What needs to be done]', '[First Last]', '[YYYY-MM-DD]', 'Open'], ['[What needs to be done]', '[First Last / First Last]', '[YYYY-MM-DD]', 'Open'], ['[What needs to be done]', '[First Last]', '[YYYY-MM-DD]', 'Open']]],
+  ['text', '[Or one per line instead of the table: First Last - What needs to be done by YYYY-MM-DD]'],
+  ['field', 'Next meeting:', '[YYYY-MM-DD]'],
+];
+function minutesTemplateText() {
+  const out = [];
+  for (const [k, a, b] of MINUTES_MODEL) {
+    if (k === 'title') out.push(a);
+    else if (k === 'note') out.push(a, '');
+    else if (k === 'field') out.push(`${a} ${b}`);
+    else if (k === 'head') out.push('', a);
+    else if (k === 'bullet') out.push('- ' + a);
+    else if (k === 'text') out.push(a);
+    else if (k === 'table') { out.push(a.join(' | ')); b.forEach(r => out.push(r.join(' | '))); out.push(''); }
+  }
+  return out.join('\r\n').replace(/(\r\n){3,}/g, '\r\n\r\n') + '\r\n';
+}
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+/** Minimal ZIP writer (stored, no compression) — enough for a small .docx. */
+function zipStore(files, type) {
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = crc32(data), sz = data.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(12, 0x21, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, sz, true); lh.setUint32(22, sz, true); lh.setUint16(26, name.length, true);
+    parts.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(14, 0x21, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, sz, true); ch.setUint32(24, sz, true); ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    off += 30 + name.length + sz;
+  }
+  const cdSize = central.reduce((n, q) => n + q.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type });
+}
+function minutesTemplateDocx() {
+  const X = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const run = (t, o = {}) => `<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/>${o.b ? '<w:b/>' : ''}${o.i ? '<w:i/>' : ''}${o.color ? `<w:color w:val="${o.color}"/>` : ''}<w:sz w:val="${o.sz || 22}"/></w:rPr><w:t xml:space="preserve">${X(t)}</w:t></w:r>`;
+  const para = (runs, o = {}) => `<w:p><w:pPr><w:spacing w:before="${o.before || 0}" w:after="${o.after == null ? 80 : o.after}"/>${o.ind ? '<w:ind w:left="360" w:hanging="220"/>' : ''}</w:pPr>${runs}</w:p>`;
+  const PH = '7F7F7F', HEAD = '1F4E79', body = [];
+  const ph = t => /^\[.*\]$/.test(t) ? run(t, { color: PH }) : run(t);
+  for (const [k, a, b] of MINUTES_MODEL) {
+    if (k === 'title') body.push(para(run(a, { b: true, sz: 36, color: HEAD }), { after: 60 }));
+    else if (k === 'note') body.push(para(run(a, { i: true, color: PH, sz: 18 }), { after: 200 }));
+    else if (k === 'field') body.push(para(run(a + ' ', { b: true }) + ph(b), { after: 40 }));
+    else if (k === 'head') body.push(para(run(a, { b: true, sz: 26, color: /^\[/.test(a) ? PH : HEAD }), { before: 240, after: 80 }));
+    else if (k === 'bullet') body.push(para(run('• ') + ph(a), { ind: true, after: 40 }));
+    else if (k === 'text') body.push(para(ph(a)));
+    else if (k === 'table') {
+      const border = '<w:tblBorders>' + ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(e => `<w:${e} w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>`).join('') + '</w:tblBorders>';
+      const widths = [4200, 2200, 1500, 1300];
+      const cell = (t, j, head) => `<w:tc><w:tcPr><w:tcW w:w="${widths[j]}" w:type="dxa"/>${head ? '<w:shd w:val="clear" w:color="auto" w:fill="DCE8F7"/>' : ''}</w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr>${head ? run(t, { b: true }) : ph(t)}</w:p></w:tc>`;
+      body.push(`<w:tbl><w:tblPr><w:tblW w:w="9200" w:type="dxa"/>${border}<w:tblCellMar><w:top w:w="60" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${widths.map(w => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>`
+        + `<w:tr><w:trPr><w:tblHeader/></w:trPr>${a.map((t, j) => cell(t, j, true)).join('')}</w:tr>` + b.map(r => `<w:tr>${r.map((t, j) => cell(t, j, false)).join('')}</w:tr>`).join('') + '</w:tbl>');
+      body.push(para('', { after: 60 }));
+    }
+  }
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body.join('')}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1080" w:right="1080" w:bottom="1080" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+  return zipStore([
+    { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>' },
+    { name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>' },
+    { name: 'word/document.xml', data: doc },
+  ], 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+}
+const openMinutesTemplate = () => document.getElementById('minutesTplDialog').showModal();
+document.querySelectorAll('[data-minutes-template]').forEach(b => b.addEventListener('click', e => { e.preventDefault(); openMinutesTemplate(); }));
+document.getElementById('btnTplDocx').addEventListener('click', () => { const b = minutesTemplateDocx(); const url = URL.createObjectURL(b); const a = Object.assign(document.createElement('a'), { href: url, download: 'meeting-minutes-template.docx' }); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000); toast('Downloaded meeting-minutes-template.docx'); });
+document.getElementById('btnTplTxt').addEventListener('click', () => { download('meeting-minutes-template.txt', '﻿' + minutesTemplateText(), 'text/plain;charset=utf-8'); toast('Downloaded meeting-minutes-template.txt'); });
 document.getElementById('btnCsvTemplate').addEventListener('click', () => {
   const nd = toISO(addDays(today(), 7));
   download('action-items-template.csv', 'Action Item,Owner,Due Date,Status,Priority,Meeting,Notes\n"Send revised timeline to client",Sarah Chen,' + nd + ',Open,High,Weekly status sync,\n"Book venue for workshop",Raj Patel,' + toISO(addDays(today(), 14)) + ',In Progress,Medium,Weekly status sync,\n', 'text/csv');
@@ -1566,13 +1685,14 @@ function splitSections(text) {
     if (t.length <= 60 && /:$/.test(t)) return true;
     return t.length <= 50 && !/[.!?,;:)]$/.test(t) && /^[A-Z0-9]/.test(t) && t.split(/\s+/).length <= 7 && !!(next && next.trim());
   };
-  raw.forEach((l, i) => { if (isHead(l, raw[i + 1])) { if (cur.title || cur.lines.length) secs.push(cur); cur = { title: l.trim().replace(/^#+\s*/, '').replace(/:$/, '').trim(), lines: [] }; } else if (l.trim()) cur.lines.push(l); });
+  const nextFilled = i => { for (let j = i + 1; j < raw.length; j++) if (raw[j].trim()) return raw[j]; return ''; };   // Word tables are preceded by a blank line
+  raw.forEach((l, i) => { if (isHead(l, nextFilled(i))) { if (cur.title || cur.lines.length) secs.push(cur); cur = { title: l.trim().replace(/^#+\s*/, '').replace(/:$/, '').trim(), lines: [] }; } else if (l.trim()) cur.lines.push(l); });
   if (cur.title || cur.lines.length) secs.push(cur);
   return secs;
 }
 const cleanLine = l => l.replace(BULLET_RE, '').replace(BULLET_RE, '').trim();
 const isNoise = l => {
-  if (!l || l.length < 18 || ACTION_RE.test(l) || CHECKBOX_RE.test(l) || JUNK_LINE.test(l)) return true;
+  if (!l || l.length < 18 || ACTION_RE.test(l) || CHECKBOX_RE.test(l) || JUNK_LINE.test(l) || /^\[[^\]]*\]\.?$/.test(l)) return true;
   if (/^(from|to|cc|bcc|sent|subject|date|attendees|present|apologies|absent|location|time)\s*:/i.test(l) || /^(hi|hello|dear|thanks|thank you|regards|kind regards|best|cheers|many thanks|good (morning|afternoon|evening))\b/i.test(l)) return true;
   const words = l.split(/\s+/), lower = words.filter(w => /^[a-z]/.test(w)).length;
   if (words.length < 5 || lower < 2 || lower < words.length * 0.25) return true;   // Title-Case labels, names, departments
@@ -1591,7 +1711,7 @@ function meetingDigest(m) {
     const topic = kind === 'topic' && head && head.toLowerCase() !== titleLc ? head : '';
     for (const raw of sec.lines) {
       const l = cleanLine(raw);
-      if (!l || /^(none|n\/a|nothing)\.?$/i.test(l) || kind === 'skip' || ACTION_RE.test(l) || CHECKBOX_RE.test(l) || JUNK_LINE.test(l)) continue;
+      if (!l || /^(none|n\/a|nothing)\.?$/i.test(l) || kind === 'skip' || ACTION_RE.test(l) || CHECKBOX_RE.test(l) || JUNK_LINE.test(l) || /^\[[^\]]*\]\.?$/.test(l)) continue;
       if (kind === 'decision') { decisions.push(l.replace(/^decisions?\s*[:\-]\s*/i, '')); continue; }
       if (kind === 'risk') { risks.push(l.replace(/^(risks?|issues?|blockers?)\s*[:\-]\s*/i, '')); continue; }
       if (/^decisions?\s*[:\-]/i.test(l) || /\b(decided|decision|agreed|approved|resolved|signed off|go[- ]ahead)\b/i.test(l)) { decisions.push(l.replace(/^decisions?\s*[:\-]\s*/i, '')); continue; }
@@ -2608,7 +2728,7 @@ function lineToItem(raw, people, inSection) {
   const done = DONE_RE.test(raw);
   let body = raw.replace(BULLET_RE, '').replace(BULLET_RE, '').replace(/\s*\((?:done|completed|closed)\)\s*$/i, '').trim();
   const m = ACTION_RE.exec(body); if (m) body = m[1].trim();
-  if (body.length < 4 || /^(none|n\/a|tbc|tbd|no (?:new )?actions?)\.?$/i.test(body)) return null;
+  if (body.length < 4 || /^(none|n\/a|tbc|tbd|no (?:new )?actions?)\.?$/i.test(body) || /^\[[^\]]*\]\.?$/.test(body)) return null;
   const lead = leadingOwner(body, people, inSection);   // "Ron - Send the deck", "Jon / Brian - Book the venue"
   if (lead) body = lead.text;
   let { text, owner, due } = parseActionLine(body), mm;
@@ -2629,7 +2749,7 @@ function findActionItems(text, people) {
     if (table && cells) {
       const g = k => table[k] >= 0 ? (cells[table[k]] || '') : '';
       const t = g('text').replace(BULLET_RE, '').trim();
-      if (t.length > 2 && !/^[-=]+$/.test(t)) items.push({ text: t.replace(/[.;]\s*$/, ''), owner: g('owner').replace(/\[[^\]]*\]/g, '').trim(), due: planDate(g('due')), done: /^(done|complete|completed|closed|yes|y|✓|✔|100%)$/i.test(g('status').trim()) });
+      if (t.length > 2 && !/^[-=]+$/.test(t) && !/^\[[^\]]*\]$/.test(t)) items.push({ text: t.replace(/[.;]\s*$/, ''), owner: g('owner').replace(/\[[^\]]*\]/g, '').trim(), due: planDate(g('due')), done: /^(done|complete|completed|closed|yes|y|✓|✔|100%)$/i.test(g('status').trim()), inProgress: /progress|started|ongoing|underway|wip/i.test(g('status')) });
       blank = false; continue;
     }
     table = null;
@@ -2749,7 +2869,7 @@ function logExtracted(att, items) {
   const existing = knownActionTexts(state.actions), ids = [];
   for (const it of items) {
     const k = it.text.toLowerCase(); if (existing.has(k)) continue; existing.add(k);
-    const a = { id: uid(), text: it.text, owner: resolveOwners(it.owner, people) || 'Unassigned', due: it.due || '', status: it.done ? 'Done' : 'Open', priority: 'Medium', meetingId, notes: 'From attachment: ' + att.name, source: { attachmentId: att.id }, auto: true, origText: it.text, createdAt: Date.now() };
+    const a = { id: uid(), text: it.text, owner: resolveOwners(it.owner, people) || 'Unassigned', due: it.due || '', status: it.done ? 'Done' : it.inProgress ? 'In Progress' : 'Open', priority: 'Medium', meetingId, notes: 'From attachment: ' + att.name, source: { attachmentId: att.id }, auto: true, origText: it.text, createdAt: Date.now() };
     markCompleted(a); state.actions.push(a); ids.push(a.id);
   }
   att.scan = { at: Date.now(), found: items.length, actionIds: ids };
