@@ -279,6 +279,13 @@ tr.drop-over td { background: var(--wash) !important; }
 .sv-files li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sv-msg { margin-top: 6px; padding: 8px 10px; background: var(--surface-2); border-radius: 8px; }
 .edition-badge { font-size: 11px; font-weight: 650; color: var(--accent); background: var(--wash); border-radius: 6px; padding: 1px 7px; margin-left: 8px; vertical-align: middle; }
+/* start-up problems */
+.boot-fail { max-width: 640px; margin: 48px auto; padding: 24px 28px; background: #fff; color: #0b0b0b; border: 1px solid #e1e0d9; border-radius: 14px; font: 15px/1.6 "Segoe UI", system-ui, sans-serif; }
+.boot-fail h2 { margin: 0 0 12px; font-size: 20px; }
+.boot-fail h3 { margin: 18px 0 4px; font-size: 15px; color: #d03b3b; }
+.boot-fail p { margin: 0 0 8px; }
+.boot-fail code, .boot-fail pre { font: 12px/1.5 Consolas, monospace; background: #f3f2ef; padding: 2px 5px; border-radius: 4px; white-space: pre-wrap; }
+.boot-fail .boot-env { color: #898781; font-size: 12px; margin-top: 16px; word-break: break-all; }
 /* lock screen */
 body.locked > :not(#lock):not(.toast):not(#shareViewDialog):not(#passDialog) { visibility: hidden; }
 .lock { position: fixed; inset: 0; z-index: 300; background: var(--page); display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -305,6 +312,50 @@ body.locked > :not(#lock):not(.toast):not(#shareViewDialog):not(#passDialog) { v
 </style>
 </head>
 <body class="locked">
+
+<!-- Start-up check: deliberately old-style JavaScript so it also runs in Internet Explorer mode and old browsers.
+     If the dashboard can't start, it explains why instead of leaving a page that does nothing. -->
+<noscript><div class="boot-fail" style="display:block"><h2>JavaScript is turned off</h2><p>This dashboard needs JavaScript. Turn it on in your browser settings, or ask your IT team, then reopen the file.</p></div></noscript>
+<div id="bootFail" class="boot-fail" role="alert" style="display:none"></div>
+<script>
+(function () {
+  var errors = [], shown = false;
+  window.onerror = function (msg, src, line) { errors.push(String(msg) + (line ? ' (line ' + line + ')' : '')); };
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  var ua = navigator.userAgent, em = /Edg\/(\d+)/.exec(ua), cm = /Chrome\/(\d+)/.exec(ua);
+  var edge = em ? +em[1] : 0, chrome = cm ? +cm[1] : 0;
+  var problems = [];
+  if (document.documentMode || /Trident\//.test(ua)) problems.push('ie');
+  else {
+    if (chrome && chrome < 80) problems.push('old');
+    if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) problems.push('crypto');
+    var storageOk = true; try { localStorage.setItem('pm-probe', '1'); localStorage.removeItem('pm-probe'); } catch (e) { storageOk = false; }
+    if (!storageOk || !window.indexedDB) problems.push('storage');
+  }
+  var TEXT = {
+    ie: ['This file opened in Internet Explorer mode', 'Internet Explorer mode can’t run the dashboard. <b>Open Microsoft Edge first</b>, then drag the file into the Edge window, or press <b>Ctrl + O</b> and choose the file. If it still opens in Internet Explorer mode, your organisation has set Edge to do that for local files. Ask your IT team to allow this file in normal Edge mode, or use Google Chrome.'],
+    old: ['This browser is too old', 'Your browser is version ' + (edge || chrome) + '. The dashboard needs <b>Microsoft Edge or Google Chrome version 80 or newer</b>. In Edge, open <b>Settings → About Microsoft Edge</b> to update, or ask your IT team.'],
+    crypto: ['The browser won’t allow encryption here', 'The dashboard encrypts everything, so it must run as a normal page. <b>Save the file to your computer first</b>, then double-click it. Don’t open it from inside Outlook, Teams, or a SharePoint/OneDrive preview.'],
+    storage: ['The browser won’t let this page save data', 'This happens in an <b>InPrivate</b> window, or when your organisation blocks storage for local files. Open the file in a normal Edge window. If that doesn’t help, ask your IT team to allow site data for local files, or use Google Chrome.'],
+    failed: ['The dashboard didn’t start', 'The file may be damaged or cut short, for example by an email filter. <b>Save the original attachment to your computer</b> and open that copy. You can check it’s complete by comparing its checksum with the one you were sent: in PowerShell run <code>Get-FileHash .\\pm-dashboard-external.html</code>.']
+  };
+  function show(list) {
+    if (shown) return; shown = true;
+    var html = '<h2>The dashboard can’t open in this browser</h2>';
+    for (var i = 0; i < list.length; i++) { var t = TEXT[list[i]]; if (t) html += '<h3>' + t[0] + '</h3><p>' + t[1] + '</p>'; }
+    if (errors.length) html += '<details><summary>Technical details</summary><pre>' + esc(errors.join('\n')) + '</pre></details>';
+    html += '<p class="boot-env">Browser: ' + esc(ua) + '</p>';
+    var box = document.getElementById('bootFail'); box.innerHTML = html; box.style.display = 'block';
+    document.body.className = document.body.className.replace(/\blocked\b/, '');
+    var lock = document.getElementById('lock'); if (lock) lock.style.display = 'none';
+    var hdr = document.querySelector('header.top'); if (hdr) hdr.style.display = 'none';
+    var main = document.querySelector('main'); if (main) main.style.display = 'none';
+  }
+  window.__pmBootProblems = problems;
+  if (problems.length) document.addEventListener('DOMContentLoaded', function () { show(problems); });
+  window.addEventListener('load', function () { setTimeout(function () { if (!window.__pmBooted) show(problems.length ? problems : ['failed']); }, 3000); });
+})();
+</script>
 
 <div id="lock" class="lock">
   <form class="lock-card" id="lockForm" autocomplete="on">
@@ -807,7 +858,7 @@ function storedEnvelope() { return currentId ? readRec(currentId) : null; }
 let saveChain = Promise.resolve();
 function persist() {
   if (!cryptoKey || !currentId) return saveChain;
-  const snap = structuredClone(state), dek = cryptoKey, hdr = acctHdr, user = currentUser, id = currentId;
+  const snap = JSON.parse(JSON.stringify(state)), dek = cryptoKey, hdr = acctHdr, user = currentUser, id = currentId;
   saveChain = saveChain.then(async () => localStorage.setItem(recKey(id), JSON.stringify({
     format: 'pm-dashboard-account', v: 3, kdf: 'PBKDF2-SHA256', cipher: 'AES-256-GCM', ...hdr, data: await encJSON(dek, { u: user, s: snap })
   }))).catch(e => { console.error(e); toast('Could not save: ' + e.message); });
@@ -1673,7 +1724,7 @@ function renderDashboard() {
 function ownerRows() {
   const map = {};
   state.actions.forEach(a => {
-    const o = map[a.owner] ||= { owner: a.owner, total: 0, open: 0, overdue: 0, done: 0, next: null };
+    const o = map[a.owner] || (map[a.owner] = { owner: a.owner, total: 0, open: 0, overdue: 0, done: 0, next: null });
     o.total++;
     if (a.status === 'Done') o.done++;
     else if (isOverdue(a)) o.overdue++;
@@ -2383,7 +2434,7 @@ function parseProjectXml(text) {
   const kid = (el, n) => { const c = kids(el, n)[0]; return c ? c.textContent.trim() : ''; };
   const block = n => kids(root, n)[0];
   const res = {}; kids(block('Resources'), 'Resource').forEach(r => { res[kid(r, 'UID')] = kid(r, 'Name'); });
-  const asg = {}; kids(block('Assignments'), 'Assignment').forEach(a => { const n = res[kid(a, 'ResourceUID')]; if (n) (asg[kid(a, 'TaskUID')] ||= []).push(n); });
+  const asg = {}; kids(block('Assignments'), 'Assignment').forEach(a => { const n = res[kid(a, 'ResourceUID')]; if (n) (asg[kid(a, 'TaskUID')] || (asg[kid(a, 'TaskUID')] = [])).push(n); });
   const tasks = kids(block('Tasks'), 'Task').filter(t => kid(t, 'UID') !== '0' && kid(t, 'OutlineLevel') !== '0' && kid(t, 'IsNull') !== '1' && kid(t, 'Active') !== '0' && kid(t, 'Name')).map(t => ({
     id: uid(), wbs: kid(t, 'WBS') || kid(t, 'OutlineNumber'), name: kid(t, 'Name'), level: Math.max(1, parseInt(kid(t, 'OutlineLevel'), 10) || 1),
     start: planDate(kid(t, 'Start')), finish: planDate(kid(t, 'Finish')), pct: clampPct(kid(t, 'PercentComplete')),
@@ -2510,7 +2561,7 @@ function renderPlan() {
   if (phases.length) { title = 'Completion by phase'; groups = phases.map(r => ({ label: r.t.name, pct: r.pct, n: rows.slice(r.i + 1, r.end).filter(x => !x.summary).length })); }
   else {
     title = 'Completion by owner'; const m = {};
-    st.leaves.forEach(r => { const k = r.t.owner || 'Unassigned'; (m[k] ||= { w: 0, p: 0, n: 0 }); m[k].w += r.weight; m[k].p += r.weight * r.pct; m[k].n++; });
+    st.leaves.forEach(r => { const k = r.t.owner || 'Unassigned'; (m[k] || (m[k] = { w: 0, p: 0, n: 0 })); m[k].w += r.weight; m[k].p += r.weight * r.pct; m[k].n++; });
     groups = Object.entries(m).map(([label, v]) => ({ label, pct: Math.round(v.p / v.w), n: v.n })).sort((a, b) => b.n - a.n);
   }
   gid('planGroupTitle').textContent = title;
@@ -3449,6 +3500,7 @@ document.getElementById('btnMore').addEventListener('click', () => { idleSel.val
   if (ed === 'external') { const b = document.getElementById('editionBadge'); b.hidden = false; b.textContent = 'External edition · offline'; b.title = 'This copy cannot connect to the internet. Data and files stay encrypted on this device; share them with secure packages.'; } }
 
 /* ---------------- boot ---------------- */
+window.__pmBooted = true;   // the start-up check shows a help page if this never gets set
 localStorage.removeItem('pm-dashboard-enc-v1');   // pre-release single-passphrase format (never published)
 if (!window.isSecureContext || !window.crypto || !crypto.subtle) {
   document.getElementById('lockTitle').textContent = 'Encryption unavailable';
