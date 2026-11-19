@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'">
+<meta name="pm-edition" content="standard">
 <title>Project Management Dashboard</title>
 <style>
 :root {
@@ -269,8 +271,16 @@ tr.drop-over td { background: var(--wash) !important; }
 .extract-list li .row-tools { opacity: .35; transition: opacity .12s; }
 .extract-list li:hover .row-tools, .extract-list li:focus-within .row-tools { opacity: 1; }
 @media (hover: none) { .extract-list li .row-tools { opacity: 1; } }
+/* secure sharing */
+.sc-files { display: grid; gap: 4px; max-height: 200px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.sc-file { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.sv-files { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 6px; }
+.sv-files li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 10px; align-items: center; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+.sv-files li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sv-msg { margin-top: 6px; padding: 8px 10px; background: var(--surface-2); border-radius: 8px; }
+.edition-badge { font-size: 11px; font-weight: 650; color: var(--accent); background: var(--wash); border-radius: 6px; padding: 1px 7px; margin-left: 8px; vertical-align: middle; }
 /* lock screen */
-body.locked > :not(#lock):not(.toast) { visibility: hidden; }
+body.locked > :not(#lock):not(.toast):not(#shareViewDialog):not(#passDialog) { visibility: hidden; }
 .lock { position: fixed; inset: 0; z-index: 300; background: var(--page); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .lock[hidden] { display: none; }
 .lock-card { width: min(400px, 100%); background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 28px 26px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; }
@@ -308,6 +318,7 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
     <button class="btn primary" type="submit" id="lockBtn">Sign in</button>
     <button type="button" class="link-btn" id="lockSwitch">New here? Create an account</button>
     <button type="button" class="link-btn" id="lockReset" hidden>Forgot password? Delete this account’s data</button>
+    <button type="button" class="link-btn" id="lockOpenShare">Received a secure package (.pmshare)? Open it without signing in</button>
     <div class="lock-note">Each account’s data is encrypted in this browser with AES-256 using its password, and is never sent anywhere. Accounts exist only on this device and browser. Your data stays saved after you sign out. <b>A forgotten password cannot be reset — the data cannot be recovered.</b></div>
   </form>
 </div>
@@ -315,7 +326,7 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
 <header class="top">
   <div>
     <h1 id="projectName" title="Click to rename project">Project Management Dashboard</h1>
-    <div class="sub" id="todayLabel"></div>
+    <div class="sub"><span id="todayLabel"></span><span class="edition-badge" id="editionBadge" hidden></span></div>
   </div>
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="dashboard" aria-selected="true">Dashboard</button>
@@ -560,6 +571,7 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
     <div style="display:flex;flex-direction:column;gap:8px">
       <button type="button" class="btn" id="btnRename">Rename project</button>
       <button type="button" class="btn" id="btnChangePass">Change password</button>
+      <button type="button" class="btn" id="btnOpenShare">Open a secure package (.pmshare)…</button>
       <button type="button" class="btn" id="btnExportPlain">Export unencrypted backup (.json)</button>
       <button type="button" class="btn" id="btnExportCsv">Export action items (.csv, unencrypted)</button>
       <button type="button" class="btn" id="btnPrint">Print / save dashboard as PDF</button>
@@ -567,6 +579,45 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
       <button type="button" class="btn danger" id="btnClear">Clear all data</button>
     </div>
     <div class="dialog-actions"><button type="button" class="btn" data-close>Close</button></div>
+  </form>
+</dialog>
+
+<!-- Secure share: create -->
+<dialog id="shareCreateDialog" style="width:min(660px,94vw)">
+  <form method="dialog" id="shareCreateForm">
+    <h2 id="scTitle">Share securely</h2>
+    <p class="small muted" style="margin-top:-6px">Creates one encrypted <b>.pmshare</b> file you can send by email, Teams, SharePoint or USB. Only someone with the share password can open it, and any change to the file stops it opening. <b>Send the password by a different route</b> (phone, text, a separate message).</p>
+    <div class="field"><label>Files to include</label><div id="scFiles" class="sc-files"></div></div>
+    <label class="small" style="display:block;margin-bottom:12px"><input type="checkbox" id="scNotes" checked> Include the meeting notes, minutes and action items</label>
+    <div class="field"><label for="scPass">Share password <span class="muted">(at least 12 characters — a strong one is suggested)</span></label>
+      <div style="display:flex;gap:6px"><input type="text" id="scPass" autocomplete="off" spellcheck="false" style="flex:1;font-family:ui-monospace,Consolas,monospace"><button type="button" class="btn sm" id="scGen">New</button><button type="button" class="btn sm" id="scCopy">Copy</button></div>
+      <div class="small" id="scStrength"></div></div>
+    <div class="row">
+      <div class="field"><label for="scExpires">Stops opening after <span class="muted">(optional)</span></label><input type="date" id="scExpires"></div>
+      <div class="field"><label for="scMsg">Message to the recipient <span class="muted">(encrypted)</span></label><input id="scMsg" placeholder="Optional"></div>
+    </div>
+    <div class="lock-err" id="scErr" role="alert"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn primary" id="scCreate">Create encrypted file</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Secure share: open -->
+<dialog id="shareViewDialog" style="width:min(720px,94vw)">
+  <form method="dialog">
+    <h2 id="svTitle">Secure package</h2>
+    <div id="svMeta" class="small" style="margin:-4px 0 6px;line-height:1.6"></div>
+    <div id="svBody"></div>
+    <div class="field" id="svSaveWrap" style="margin-top:12px"><label for="svTarget">Save into</label><select id="svTarget" style="border:1px solid var(--border);background:var(--surface-1);border-radius:8px;padding:6px 10px"></select></div>
+    <p class="small muted" id="svSignedOut" style="margin:10px 0 0">You're not signed in, so files can be downloaded but not saved to a dashboard.</p>
+    <div class="dialog-actions">
+      <button type="button" class="btn" data-close>Close</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn" id="svDownloadAll">Download all files</button>
+      <button type="button" class="btn primary" id="svSave">Save to my dashboard</button>
+    </div>
   </form>
 </dialog>
 
@@ -670,7 +721,8 @@ body.locked > :not(#lock):not(.toast) { visibility: hidden; }
 </dialog>
 
 <datalist id="ownerList"></datalist>
-<input type="file" id="fileInput" multiple accept=".txt,.md,.csv,.json,.docx,.msg,.eml,.xlsx,.xlsm,.xml,.xls,.mpp" hidden>
+<input type="file" id="shareFileInput" accept=".pmshare" hidden>
+<input type="file" id="fileInput" multiple accept=".pmshare,.txt,.md,.csv,.json,.docx,.msg,.eml,.xlsx,.xlsm,.xml,.xls,.mpp" hidden>
 <input type="file" id="minutesFileInput" accept=".txt,.md,.docx" hidden>
 <input type="file" id="csvFileInput" accept=".csv" hidden>
 <input type="file" id="attFileInput" multiple hidden>
@@ -1073,6 +1125,7 @@ async function handleFiles(files) {
     try {
       if (/\.json$/i.test(f.name)) await importJson(await f.text());
       else if (/\.csv$/i.test(f.name)) openCsvPreview(await f.text(), f.name);
+      else if (isShareFile(f)) await openShareFile(f);
       else if (isEmailFile(f)) await emailToMeeting(f);
       else if (/\.(xlsx|xlsm|xml|xls|mpp)$/i.test(f.name)) await importPlanFile(f);
       else if (/\.(txt|md|docx)$/i.test(f.name)) {
@@ -1358,8 +1411,10 @@ document.addEventListener('dragleave', e => { if (e.relatedTarget) return; setDr
 document.addEventListener('drop', e => {
   e.preventDefault();
   const host = dropHost(e); setDrag(null); dz.classList.remove('over');
-  if (!cryptoKey) return;
   let files = [...e.dataTransfer.files];
+  const pkg = files.find(isShareFile);
+  if (pkg) { openShareFile(pkg, { meetingId: host && host.dataset.dropType === 'meeting' ? host.dataset.dropId : null }); files = files.filter(f => !isShareFile(f)); if (!files.length) return; }
+  if (!cryptoKey) return;
   if (!files.length) {
     if (internalDrag) return;
     const tf = textDropToFile(e.dataTransfer);
@@ -1794,7 +1849,7 @@ function meetingDetail(m) {
       <section class="md-sec"><h3>Risks &amp; issues</h3>${d.risks.length ? `<ul class="md-list risk">${d.risks.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted small">None recorded</p>'}</section>
     </div>` : ''}
     <section class="md-sec"><h3>Action items</h3>${acts.length ? `<table class="md-acts"><tbody>${sortActs(acts).map(a => `<tr class="${a.status === 'Done' ? 'done-row' : ''}"><td style="width:120px">${statusPill(a)}</td><td><span class="act-text">${esc(a.text)}</span>${a.source ? ' <span class="muted small">· from attachment</span>' : ''}</td><td class="small" style="white-space:nowrap">${esc(a.owner)}</td><td class="small" style="white-space:nowrap">${a.due ? (a.status === 'Done' ? fmtDate(a.due) : relDue(a.due)) : '<span class="muted">No due date</span>'}</td><td style="width:150px;text-align:right;white-space:nowrap">${a.status === 'Done' ? '' : `<button class="btn sm" data-done="${esc(a.id)}">✓ Done</button>`}<button class="icon-btn" data-edit-action="${esc(a.id)}" title="Edit" aria-label="Edit ${esc(a.text)}">✎</button><button class="icon-btn" data-del-action="${esc(a.id)}" title="Delete" aria-label="Delete ${esc(a.text)}">🗑</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted small" style="margin:0">No action items yet.</p>'}</section>
-    <section class="md-sec"><h3>Attachments</h3><div class="att-list">${attChips(atts)}</div><div class="att-drop sm" tabindex="0" role="button">📎 Drop files or Outlook emails here, or <u>browse</u> — action items inside are logged automatically</div></section>
+    <section class="md-sec"><h3 style="display:flex;align-items:center;gap:8px">Attachments <span class="spacer"></span><button type="button" class="btn sm" data-share-meeting="${esc(m.id)}" title="Send these files to someone as one encrypted, password-protected package">🔒 Share securely</button></h3><div class="att-list">${attChips(atts)}</div><div class="att-drop sm" tabindex="0" role="button">📎 Drop files or Outlook emails here, or <u>browse</u> — action items inside are logged automatically</div></section>
     ${m.minutes ? `<details class="minutes"><summary>Full minutes</summary><pre>${esc(m.minutes)}</pre></details>` : ''}
   </div>`;
 }
@@ -3040,6 +3095,180 @@ document.addEventListener('click', e => {
 }, true);
 document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('att-drop')) { e.preventDefault(); e.target.click(); } });
 
+/* ---------------- secure file sharing (.pmshare packages) ---------------- */
+/* A package is one JSON file: { format, v, kdf, iter, cipher, salt, iv, ct }. Everything else — sender, message,
+   expiry, meeting notes, action items and the files themselves (with SHA-256 fingerprints) — is inside the
+   AES-256-GCM ciphertext, keyed by PBKDF2-SHA256 (600k) from a share password that is never stored.
+   GCM authentication means any change to the file makes it fail to open. */
+const SHARE_MAX = 60 * 1024 * 1024;
+const isShareFile = f => /\.pmshare$/i.test((f && f.name) || '');
+async function sha256Hex(buf) { const h = await crypto.subtle.digest('SHA-256', buf); return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join(''); }
+async function shareKey(pass, salt, iter) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iter || ITER, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+function strongPassword() {   // 20 random characters from an unambiguous alphabet, in groups of 5
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789', out = [];
+  while (out.length < 20) { for (const b of crypto.getRandomValues(new Uint8Array(32))) if (b < A.length * 4 && out.length < 20) out.push(A[b % A.length]); }
+  return out.join('').replace(/(.{5})(?=.)/g, '$1-');
+}
+function passStrength(p) {
+  const classes = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(r => r.test(p)).length;
+  if (p.length < 12) return ['Too short — use at least 12 characters', false];
+  if (p.length >= 16 && classes >= 3) return ['Strong', true];
+  return [classes >= 2 ? 'OK' : 'Weak — mix letters, numbers and symbols', classes >= 2];
+}
+let shareCtx = null;
+function openShareCreate(meetingId) {
+  const m = meetingById(meetingId); if (!m) return;
+  const actIds = new Set(state.actions.filter(a => a.meetingId === meetingId).map(a => a.id));
+  const atts = state.attachments.filter(a => (a.parentType === 'meeting' && a.parentId === meetingId) || (a.parentType === 'action' && actIds.has(a.parentId)));
+  shareCtx = { meetingId };
+  gid('scTitle').textContent = 'Share securely — ' + m.title;
+  gid('scFiles').innerHTML = atts.length ? atts.map(a => `<label class="sc-file"><input type="checkbox" value="${esc(a.id)}" checked> ${a.email ? '✉' : fileIcon(a.name, a.type)} ${esc((a.email && a.email.subject) || a.name)} <span class="muted small">${fmtSize(a.size)}${a.parentType === 'action' ? ' · on an action item' : ''}</span></label>`).join('') : '<p class="muted small" style="margin:0">This meeting has no attachments — the package will contain the meeting notes and action items only.</p>';
+  gid('scNotes').checked = true; gid('scPass').value = strongPassword(); gid('scExpires').value = ''; gid('scExpires').min = toISO(today()); gid('scMsg').value = ''; gid('scErr').textContent = '';
+  gid('scCreate').disabled = false; gid('scCreate').textContent = 'Create encrypted file';
+  updateStrength();
+  gid('shareCreateDialog').showModal();
+}
+function updateStrength() { const [label, ok] = passStrength(gid('scPass').value); gid('scStrength').textContent = label; gid('scStrength').style.color = ok ? 'var(--good-text)' : 'var(--critical)'; }
+gid('scPass').addEventListener('input', updateStrength);
+gid('scGen').addEventListener('click', () => { gid('scPass').value = strongPassword(); updateStrength(); });
+gid('scCopy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(gid('scPass').value); toast('Password copied — send it separately from the file'); } catch (e) { gid('scPass').select(); toast('Select the password and copy it (Ctrl+C)'); } });
+gid('shareCreateForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = gid('scErr'), btn = gid('scCreate'); err.textContent = '';
+  const m = meetingById(shareCtx && shareCtx.meetingId); if (!m) return;
+  const pass = gid('scPass').value, [label, ok] = passStrength(pass);
+  if (!ok) { err.textContent = 'Choose a stronger share password: ' + label; return; }
+  const exp = gid('scExpires').value;
+  if (exp && exp < toISO(today())) { err.textContent = 'The expiry date is in the past'; return; }
+  const ids = [...gid('scFiles').querySelectorAll('input:checked')].map(i => i.value);
+  const withNotes = gid('scNotes').checked;
+  if (!ids.length && !withNotes) { err.textContent = 'Select at least one file, or include the meeting notes'; return; }
+  const total = state.attachments.filter(a => ids.includes(a.id)).reduce((n, a) => n + a.size, 0);
+  if (total > SHARE_MAX) { err.textContent = `Too large (${fmtSize(total)}) — a package can hold up to ${fmtSize(SHARE_MAX)}. Split the files into several packages.`; return; }
+  btn.disabled = true; btn.textContent = 'Encrypting…';
+  try {
+    const files = [];
+    for (const id of ids) {
+      const a = state.attachments.find(x => x.id === id), r = await getFile(id);
+      if (!a || !r) throw new Error('a file is missing on this device: ' + (a ? a.name : id));
+      const pt = await decFile(cryptoKey, r);
+      files.push({ name: a.name, type: a.type || '', size: pt.byteLength, sha256: await sha256Hex(pt), email: a.email || null, data: toB64(pt) });
+    }
+    const acts = withNotes ? state.actions.filter(a => a.meetingId === m.id).map(a => ({ text: a.text, owner: a.owner, due: a.due, status: a.status, priority: a.priority })) : [];
+    const payload = { meta: { from: currentUser, created: new Date().toISOString(), message: gid('scMsg').value.trim(), expires: exp || '', project: state.project, title: m.title },
+      meeting: withNotes ? { title: m.title, date: m.date, attendees: m.attendees || '', minutes: m.minutes || '' } : null, actions: acts, files };
+    const salt = rand(16), iv = rand(12), key = await shareKey(pass, salt);
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(payload)));
+    const env = { format: 'pm-dashboard-share', v: 1, kdf: 'PBKDF2-SHA256', iter: ITER, cipher: 'AES-256-GCM', salt: toB64(salt), iv: toB64(iv), ct: toB64(ct) };
+    download(slug(m.title).slice(0, 60) + '-secure.pmshare', JSON.stringify(env), 'application/octet-stream');
+    gid('shareCreateDialog').close();
+    toast(`Encrypted package created (${plural(files.length, 'file')}${withNotes ? ' + notes' : ''}). Send the password separately.`);
+  } catch (ex) { console.error(ex); err.textContent = 'Could not create the package: ' + ex.message; }
+  finally { btn.disabled = false; btn.textContent = 'Create encrypted file'; }
+});
+
+/** Open a .pmshare: ask for its password, verify every file, then download or save into the dashboard. */
+async function openShareFile(file, opts = {}) {
+  let env;
+  try { env = JSON.parse(await file.text()); } catch (e) { env = null; }
+  if (!env || env.format !== 'pm-dashboard-share' || !env.ct) { toast(`${file.name} is not a secure share package`); return; }
+  let payload = null;
+  const ok = await askPass({
+    title: 'Open secure package', okLabel: 'Open',
+    msg: `${file.name} is encrypted. Enter the share password you were given separately.`,
+    fields: [{ name: 'p', label: 'Share password', ac: 'off' }],
+    validate: async v => {
+      try {
+        const key = await shareKey(v.p, fromB64(env.salt), env.iter);
+        payload = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(env.iv) }, key, fromB64(env.ct))));
+        return '';
+      } catch (e) { return 'Incorrect password — or the file was changed after it was created'; }
+    }
+  });
+  if (!ok || !payload) return;
+  const meta = payload.meta || {};
+  if (meta.expires && meta.expires < toISO(today())) {
+    payload = null;
+    alert(`This secure package expired on ${fmtDate(meta.expires)}.\n\nAsk ${meta.from || 'the sender'} to send a new one.`);
+    return;
+  }
+  const files = [];
+  for (const f of payload.files || []) {
+    const bytes = fromB64(f.data);
+    files.push({ ...f, bytes, data: null, verified: (await sha256Hex(bytes)) === f.sha256 });
+  }
+  payload.files = files;
+  showShareViewer(payload, opts);
+}
+let shareView = null;
+function showShareViewer(payload, opts) {
+  shareView = payload;
+  const meta = payload.meta || {}, signed = !!cryptoKey, bad = payload.files.filter(f => !f.verified).length;
+  gid('svTitle').textContent = '🔒 ' + (meta.title || 'Secure package');
+  gid('svMeta').innerHTML = [
+    meta.from && `<div><span class="muted">From:</span> ${esc(meta.from)}${meta.project ? ` · ${esc(meta.project)}` : ''}</div>`,
+    meta.created && `<div><span class="muted">Created:</span> ${esc(new Date(meta.created).toLocaleString())}</div>`,
+    meta.expires && `<div><span class="muted">Expires:</span> ${fmtDate(meta.expires)}</div>`,
+    meta.message && `<div class="sv-msg">${esc(meta.message)}</div>`,
+  ].filter(Boolean).join('');
+  const acts = payload.actions || [];
+  gid('svBody').innerHTML = `
+    <div class="sec-label">Files · ${payload.files.length}</div>
+    ${payload.files.length ? `<ul class="sv-files">${payload.files.map((f, i) => `<li><span>${f.email ? '✉' : fileIcon(f.name, f.type)} ${esc((f.email && f.email.subject) || f.name)}</span><span class="muted small">${fmtSize(f.size)}</span><span class="small ${f.verified ? '' : 'overdue-text'}">${f.verified ? '✓ Verified' : '✗ Altered — do not use'}</span><button type="button" class="btn sm" data-sv-dl="${i}" ${f.verified ? '' : 'disabled'}>Download</button></li>`).join('')}</ul>` : '<p class="muted small">No files in this package.</p>'}
+    ${payload.meeting ? `<div class="sec-label">Meeting notes</div><p class="small" style="margin:0">${esc(payload.meeting.title)} · ${fmtDate(payload.meeting.date)}${payload.meeting.minutes ? ` · ${plural(payload.meeting.minutes.split(/\n/).filter(Boolean).length, 'line')} of minutes` : ''}</p>` : ''}
+    ${acts.length ? `<div class="sec-label">Action items · ${acts.length}</div><ul class="extract-list">${acts.slice(0, 10).map(a => `<li>${esc(a.text)} <span class="muted">— ${esc(a.owner || 'Unassigned')}${a.due ? ', ' + fmtDate(a.due) : ''}</span></li>`).join('')}${acts.length > 10 ? `<li class="muted">+${acts.length - 10} more</li>` : ''}</ul>` : ''}
+    <p class="small muted" style="margin:12px 0 0">Every file was checked against the fingerprint taken when the package was made${bad ? ` — <b class="overdue-text">${plural(bad, 'file')} did not match</b>` : ''}. Downloaded files are no longer encrypted — store them somewhere safe.</p>`;
+  gid('svSaveWrap').hidden = !signed; gid('svSave').hidden = !signed;
+  gid('svSignedOut').hidden = signed;
+  if (signed) {
+    const sel = gid('svTarget');
+    sel.innerHTML = `<option value="__new">A new meeting${payload.meeting ? ` — “${esc(payload.meeting.title)}”` : ''}</option>` + [...state.meetings].sort((a, b) => b.date.localeCompare(a.date)).map(m => `<option value="${esc(m.id)}">${esc(m.title)} (${fmtDate(m.date)})</option>`).join('');
+    sel.value = opts.meetingId && meetingById(opts.meetingId) ? opts.meetingId : '__new';
+  }
+  gid('svDownloadAll').disabled = !payload.files.some(f => f.verified);
+  gid('shareViewDialog').showModal();
+}
+gid('shareViewDialog').addEventListener('close', () => { shareView = null; gid('svBody').innerHTML = ''; });   // drop decrypted data from memory
+gid('svBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-sv-dl]'); if (!b || !shareView) return;
+  const f = shareView.files[+b.dataset.svDl]; if (f && f.verified) downloadBlob(new Blob([f.bytes], { type: f.type || 'application/octet-stream' }), f.name);
+});
+gid('svDownloadAll').addEventListener('click', async () => {
+  if (!shareView) return;
+  for (const f of shareView.files.filter(x => x.verified)) { downloadBlob(new Blob([f.bytes], { type: f.type || 'application/octet-stream' }), f.name); await new Promise(r => setTimeout(r, 350)); }
+});
+gid('svSave').addEventListener('click', async () => {
+  if (!shareView || !cryptoKey) return;
+  const pl = shareView, meta = pl.meta || {}, target = gid('svTarget').value;
+  let m = target !== '__new' ? meetingById(target) : null;
+  if (!m) {
+    const src = pl.meeting || { title: meta.title || ('Secure package from ' + (meta.from || 'a colleague')), date: toISO(today()), attendees: '', minutes: '' };
+    m = { id: uid(), title: src.title, date: src.date || toISO(today()), attendees: src.attendees || '', minutes: src.minutes || '', createdAt: Date.now() };
+    state.meetings.push(m);
+  }
+  const known = knownActionTexts(state.actions.filter(a => a.meetingId === m.id));
+  let nActs = 0;
+  for (const a of pl.actions || []) {
+    if (!a.text || known.has(a.text.toLowerCase())) continue; known.add(a.text.toLowerCase());
+    const x = { id: uid(), text: a.text, owner: a.owner || 'Unassigned', due: a.due || '', status: ['Open', 'In Progress', 'Done'].includes(a.status) ? a.status : 'Open', priority: a.priority || 'Medium', meetingId: m.id, notes: 'From secure package' + (meta.from ? ' sent by ' + meta.from : ''), auto: true, origText: a.text, createdAt: Date.now() };
+    markCompleted(x); state.actions.push(x); nActs++;
+  }
+  save();
+  const files = pl.files.filter(f => f.verified).map(f => new File([f.bytes], f.name, { type: f.type || '' }));
+  if (files.length) await addAttachments(files, 'meeting', m.id);
+  gid('shareViewDialog').close();
+  selMeeting = m.id; showView('meetings'); renderMeetings();
+  toast(`Saved to “${m.title}”: ${plural(files.length, 'file')} (re-encrypted with your account)${nActs ? ` and ${plural(nActs, 'action item')}` : ''}`);
+});
+const shareInput = gid('shareFileInput');
+shareInput.addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) openShareFile(f); });
+gid('btnOpenShare').addEventListener('click', () => { gid('moreDialog').close(); shareInput.click(); });
+gid('lockOpenShare').addEventListener('click', () => shareInput.click());
+document.addEventListener('click', e => { const t = e.target.closest('[data-share-meeting]'); if (!t) return; e.preventDefault(); if (cryptoKey) openShareCreate(t.dataset.shareMeeting); });
+
 /* ---------------- password prompt ---------------- */
 function askPass(opts) {
   return new Promise(resolve => {
@@ -3214,6 +3443,10 @@ idleSel.addEventListener('change', () => {
 });
 document.getElementById('btnMore').addEventListener('click', () => { idleSel.value = String(state.settings.idleMins); });
 ['keydown', 'pointerdown', 'wheel', 'mousemove', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { if (cryptoKey) resetIdle(); }, { passive: true }));
+
+/* ---------------- edition ---------------- */
+{ const ed = (document.querySelector('meta[name="pm-edition"]') || {}).content || 'standard';
+  if (ed === 'external') { const b = document.getElementById('editionBadge'); b.hidden = false; b.textContent = 'External edition · offline'; b.title = 'This copy cannot connect to the internet. Data and files stay encrypted on this device; share them with secure packages.'; } }
 
 /* ---------------- boot ---------------- */
 localStorage.removeItem('pm-dashboard-enc-v1');   // pre-release single-passphrase format (never published)

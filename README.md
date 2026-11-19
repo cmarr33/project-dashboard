@@ -12,4 +12,6 @@ A single-page dashboard for uploading meeting minutes and action items (owners, 
   using a random data key wrapped by a PBKDF2-SHA256 key derived from the password. Usernames are stored only as
   a one-way hash, and stored file sizes are padded. Nothing is sent to a server — this site only serves the page.
 - Accounts live in the browser on each device; a forgotten password cannot be reset.
+- Share files securely with encrypted, password-protected `.pmshare` packages (open them even without an account).
+- The page cannot connect to the internet (Content-Security-Policy blocks all network requests).
 - Use **Export** for an encrypted backup (includes attachments); share the file and the password separately.
